@@ -9,7 +9,7 @@
  ********************************/
 
 
-extern int branchaddr ();
-extern int addmode ();
+extern int branchaddr (void);
+extern int addmode (void);
 
 

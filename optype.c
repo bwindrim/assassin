@@ -22,10 +22,9 @@
 #include "addr.h"
 #include "optype.h"
 
-static int getreg ();
+static int getreg (void);
 
-void	type1 (code, mode)
-unsigned	code, mode;
+void	type1 (unsigned int code, unsigned int mode)
 {
   static byte_ptr	optr;
 
@@ -56,9 +55,7 @@ unsigned	code, mode;
     }
 }
 
-int type2 (code, nextw, ch, oplen)
-int	code, nextw, oplen;
-char	ch;
+int type2 (int code, int nextw, char ch, int oplen)
 {
   static char regadj;
   static byte_ptr	optr;
@@ -93,9 +90,7 @@ char	ch;
   return (1);
 }
 
-void	typeshift (rcode, lcode, nextw, oplen)
-int	rcode, lcode,
-	nextw, oplen;
+void	typeshift (int rcode, int lcode, int nextw, int oplen)
 {
   static char code;
   static byte_ptr	optr;
@@ -133,8 +128,7 @@ int	rcode, lcode,
       }
 }
 
-void	typelea (code)
-int	code;
+void	typelea (int code)
 {
   genbyte (code);
   error = noerror;
@@ -143,15 +137,13 @@ int	code;
     error = invmodestr;
 }
 
-void	typemisc(code)
-int	code;
+void	typemisc(int code)
 {
   genbyte (code);
   error = noerror;
 }
 
-void	typeswi (number)
-int	number;
+void	typeswi (int number)
 {
   static char code;
 
@@ -166,8 +158,7 @@ int	number;
     }
 }
 
-void	typecc (code)
-int	code;
+void	typecc (int code)
 {
   error = noerror;
 
@@ -177,8 +168,7 @@ int	code;
     error = invmodestr;
 }
 
-void	typepspl (code)
-int	code;
+void	typepspl (int code)
 {
   static char dcode;
 
@@ -233,8 +223,7 @@ int	code;
     }
 }
 
-void	typesc(code)
-int	code;
+void	typesc(int code)
 {
   static char dcode;
 
@@ -276,8 +265,7 @@ int	code;
   genbyte ((0x1C == code) ? ~dcode : dcode);
 }
 
-void	typext (code)
-int	code;
+void	typext (int code)
 {
   static char count;
   static int  dcode;
@@ -343,8 +331,7 @@ int	code;
       genbyte (dcode);
 }
 
-void	typebr (nextw, lso)
-unsigned	nextw, lso;
+void	typebr (unsigned int nextw, unsigned int lso)
 {
   static int code;
 

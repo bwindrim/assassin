@@ -25,11 +25,7 @@
 #include "macro.h"
 
 
-void	def_macro (linebuffer, inp, fname, lno)
-	char	*linebuffer;
-	FILE	*inp;
-	char   *fname;
-	int     lno;
+void	def_macro (char *linebuffer, FILE *inp, const char *fname, int lno)
 {
   static char	*next_param, *ptr;
   static char	**param_ptr, **scan_ptr,
@@ -155,17 +151,13 @@ void	def_macro (linebuffer, inp, fname, lno)
 }
 
 
-Obj_ptr	get_macro (name)
-	char	*name;
+Obj_ptr	get_macro (const char *name)
 {
   return find_name_sym (name, strend (name), MACRO);
 }
 
 
-void	exp_macro (macro, fname, lno)
-	Obj_ptr	macro;
-        char   *fname;
-        int     lno;
+void	exp_macro (Obj_ptr macro, const char *fname, int lno)
 {
   char	exp_buff [TEXT_BUFF_SIZE];
   char	param_buff [TEXT_BUFF_SIZE];
@@ -245,7 +237,7 @@ void	exp_macro (macro, fname, lno)
       if (error)
 	outline (line->text, fname, lno);
       else
-	parse (exp_buff, NULL);
+	parse (exp_buff, NULL, fname, lno); /* Todo: check these args */
     }
 
   /* restore list_flag */

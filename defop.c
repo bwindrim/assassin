@@ -23,7 +23,7 @@
 
 #include "defop.h"
 
-void	defb ()
+void	defb (void)
 {
   static char *ptr;
 
@@ -38,7 +38,7 @@ void	defb ()
     }
 }
 
-void	defw ()
+void	defw (void)
 {
   static char *ptr;
 
@@ -50,7 +50,7 @@ void	defw ()
     }
 }
 
-void	defs ()
+void	defs (void)
 {
   error	      = noerror;
   forward_sym = FALSE;
@@ -64,7 +64,7 @@ void	defs ()
     nextaddr = genaddr + val;
 }
 
-void	redef ()
+void	redef (void)
 {
   error	      = noerror;
   forward_sym = FALSE;

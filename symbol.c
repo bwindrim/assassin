@@ -32,9 +32,10 @@ Object	root_block = {
 Obj_ptr	block_stack [BLOCK_STACK_SIZE] = { NULL, &root_block },
 	*block_ptr		       = block_stack + 1;
 
-static void dump_obj (obj, level)
-    Obj_ptr obj;
-    int level;
+static void dump_obj (
+		      Obj_ptr obj,
+		      int level
+		      )
 {
     Obj_ptr obj_ptr;
     static int i;
@@ -61,13 +62,15 @@ static void dump_obj (obj, level)
     }
 }
 
-Obj_ptr	find_local_sym (start, end, stype, block)
-    char	*start, *end;
-    int		stype;
-    Obj_ptr     block;
+Obj_ptr	find_local_sym (
+    const char	*start,
+    const char        *end,
+    int		stype,
+    Obj_ptr     block
+			)
 {
   static Obj_ptr obj_ptr;
-  static char	*ch1, *ch2;
+  static const char	*ch1, *ch2;
 
   if (start == end || NULL == block || NULL == block->var.blk.insert)
     return (NULL);
@@ -101,8 +104,7 @@ Obj_ptr	find_local_sym (start, end, stype, block)
 }
 
 
-void	create_block (block_name)
-char	*block_name;
+void	create_block (const char *block_name)
 {
   static Obj_ptr new_block;
 
@@ -136,9 +138,9 @@ char	*block_name;
     {
       new_block->type = BLOCK;
       new_block->var.blk.insert = NULL;
-      new_block->name = block_name;
+      new_block->name = (char *)block_name; /* FixMe */
 
-      insert_symbol (BLOCK, block_name, new_block, *block_ptr);
+      insert_symbol (BLOCK, (char *)/*FixMe*/block_name, new_block, *block_ptr);
 
       new_block->var.blk.contents = (*block_ptr)->var.blk.contents;
 
@@ -147,8 +149,7 @@ char	*block_name;
 /*if (debug) fprintf (stderr, "3 leaving create_block\n");*/
 }
 
-void	open_block (block_name)
-char	*block_name;
+void	open_block (const char *block_name)
 {
   static Obj_ptr ptr;
 
@@ -176,7 +177,7 @@ char	*block_name;
     }
 }
 
-void	end_block ()
+void	end_block (void)
 {
   if (block_ptr > (block_stack + 1))
     --block_ptr;
@@ -184,11 +185,12 @@ void	end_block ()
     error = enderrstr;
 }
 
-void	insert_symbol (stype, sname, new_symbol, block)
+void	insert_symbol (
 char	stype,
-	*sname;
+char	*sname,
 Obj_ptr	new_symbol,
-	block;
+Obj_ptr	block
+		       )
 {
 
     if (NULL == block)
@@ -215,11 +217,12 @@ Obj_ptr	new_symbol,
 }
 
 
-void	add_symbol (stype, sname, svalue, block)
-char	stype,
-	*sname;
-int	svalue;
-Obj_ptr	block;
+void	add_symbol (
+     char	stype,
+     char	*sname,
+     int	svalue,
+     Obj_ptr	block
+     )
 {
   static Obj_ptr new_symbol;
 
@@ -270,10 +273,11 @@ Obj_ptr	block;
 }
 
 
-Obj_ptr	add_macro (sname, params, block)
-char	*sname;
-int	params;
-Obj_ptr	block;
+Obj_ptr	add_macro (
+		   char	*sname,
+		   int	params,
+		   Obj_ptr	block
+		   )
 {
   static Obj_ptr new_symbol;
 
@@ -317,13 +321,15 @@ Obj_ptr	block;
 }
 
 
-Obj_ptr	find_global_sym (start, end, stype, block)
-    char	*start, *end;
-    char	stype;
-    Obj_ptr     block;
+Obj_ptr	find_global_sym (
+    const char	*start,
+    const char        *end,
+    char	stype,
+    Obj_ptr     block
+			 )
 {
   static Obj_ptr obj_ptr;
-  static char	*ch1, *ch2;
+  static const char	*ch1, *ch2;
 
   if (start == end || NULL == block)
     return (NULL);
@@ -374,12 +380,14 @@ Obj_ptr	find_global_sym (start, end, stype, block)
 }
 
 
-Obj_ptr	find_name_sym (start, end, stype)
-char	*start, *end;
-char	stype;
+Obj_ptr	find_name_sym (
+		       const char	*start,
+		       const char     *end,
+		       char	stype
+		       )
 {
     Obj_ptr	 block;
-    char	*ptr;
+    const char	*ptr;
 
 /*if (debug) fprintf (stderr, "entering find_name_sym\n");*/
 
@@ -422,8 +430,10 @@ char	stype;
 }
 
 
-int	symbol_val (start, end)
-    char *start, *end;
+int	symbol_val (
+    const char *start,
+    const char *end
+		    )
 {
   static Obj_ptr obj_ptr;
 
@@ -448,10 +458,11 @@ int	symbol_val (start, end)
 }
 
 
-void	redef_sym  (stype, sname, svalue)
-char	stype,
-	*sname;
-int	svalue;
+void	redef_sym  (
+		    char	stype,
+		    const char   *sname,
+		    int	svalue
+		    )
 {
   static Obj_ptr obj_ptr;
 

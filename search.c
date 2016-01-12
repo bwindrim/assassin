@@ -11,8 +11,7 @@
 
 #include "search.h"
 
-char skipspace (ptr)
-	char **ptr;
+char skipspace (char **ptr)
 {
   while (isspace (**ptr))
     ++*ptr;
@@ -20,7 +19,7 @@ char skipspace (ptr)
   return(**ptr);
 }
 
-char	*next_field ()
+char	*next_field (void)
 {
   static char	*ptr, *ret_ptr;
   static bool	quote_flag;
@@ -52,16 +51,14 @@ char	*next_field ()
   return (ret_ptr);
 }
 
-char	*strend (ptr)
-	char	*ptr;
+char	*strend (const char *ptr)
 {
 	while (*ptr) ++ptr;
 
-	return (ptr);
+	return (char *)(ptr); /* FixMe */
 }
 
-char	*strip_quotes (ptr)
-	char	*ptr;
+char	*strip_quotes (char *ptr)
 {
   static char	*end;
 
@@ -78,8 +75,7 @@ char	*strip_quotes (ptr)
   return (ptr);
 }
 
-bool	check_name (ptr)
-	char	*ptr;
+bool	check_name (const char *ptr)
 {
   if (!*ptr || isdigit (*ptr))
     return (FALSE);
@@ -97,9 +93,7 @@ bool	check_name (ptr)
   return (TRUE);
 }
 
-char	*bound_str (start, end)
-	char	*start,
-		*end;
+char	*bound_str (const char *start, const char *end)
 {
   static char buffer [TEXT_BUFF_SIZE];
   static char *ptr;
@@ -113,8 +107,7 @@ char	*bound_str (start, end)
   return (buffer);
 }
 
-char	*strupper (string)
-	char	*string;
+char	*strupper (char *string)
 {
   static char	*ptr;
 
@@ -150,8 +143,7 @@ char	*strdup (string)
 /*
  * Safe strcmp function, doesn't mind NULL ptrs
  */
-int safecmp (s1, s2)
-char *s1, *s2;
+int safecmp (const char *s1, const char *s2)
 {
     if (NULL == s1)
 	if (NULL == s2)

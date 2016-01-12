@@ -31,8 +31,7 @@ char	*curr_name,
 	*op_str,
 	*addr_str;
 
-static bool	checkrest(str)
-	char_ptr	str;
+static bool	checkrest(const char *str)
 {
   do
     if (*str != *op_str++)
@@ -43,10 +42,11 @@ static bool	checkrest(str)
 }
 
 
-void	outline (linebuffer, fname, lno)
-	char	*linebuffer;
-	char    *fname;
-	int      lno;
+void	outline (
+		 char	*linebuffer,
+		 const char    *fname,
+		 int      lno
+		 )
 {
   static char	*pr_ptr;
 
@@ -108,10 +108,11 @@ void	outline (linebuffer, fname, lno)
 }
 
 
-static void	end_line (linebuffer, fname, lno)
-	char	*linebuffer;
-        char    *fname;
-        int      lno;
+static void	end_line (
+			  char	*linebuffer,
+			  const char    *fname,
+			  int      lno
+			  )
 {
   if (curr_name)
     add_symbol (ABS, curr_name, genaddr, *block_ptr);
@@ -120,8 +121,7 @@ static void	end_line (linebuffer, fname, lno)
 }
 
 
-static bool	split_line (buffer)
-	char	*buffer;
+static bool	split_line (char *buffer)
 {
   static char *ch, *name;
   static char loc_buf [TEXT_BUFF_SIZE];
@@ -191,11 +191,12 @@ if (0 == pass)
 }
 
 
-void	parse (linebuffer, inp, fname, lno)
-	char	*linebuffer;
-	FILE	*inp;
-        char    *fname;
-	int      lno;
+void	parse (
+	       char	*linebuffer,
+	       FILE	*inp,
+	       const char    *fname,
+	       int      lno
+	       )
 {
   static bool	  fourlong;
   static int	  oplen;
@@ -636,7 +637,7 @@ void	parse (linebuffer, inp, fname, lno)
 }
 
 
-static bool	ctrl_c_hit ()
+static bool	ctrl_c_hit (void)
 {
 /* need none of this
   if (keyhit () && (3 == rawin ()))
@@ -651,9 +652,10 @@ static bool	ctrl_c_hit ()
 }
 
 
-void	parse_stream (fp, fname)
-FILE	*fp;
-char    *fname;
+void	parse_stream (
+		      FILE	*fp,
+		      const char    *fname
+		      )
 {
   static char textbuffer [TEXT_BUFF_SIZE];
   int local_count;
@@ -677,8 +679,7 @@ char    *fname;
 }
 
 
-void	parse_file (filename)
-	char	*filename;
+void	parse_file (const char *filename)
 {
   static FILE *inp;
   static int level = -1;

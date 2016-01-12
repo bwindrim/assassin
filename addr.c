@@ -22,13 +22,13 @@
 #include "addr.h"
 #include "eval.h"
 
-int branchaddr ()
+int branchaddr (void)
 {
   return (eval_str (addr_str));
 }
 
 
-int addmode ()
+int addmode (void)
 {
   static char   prechar, reg;
   static byte   mode, indirect, regno;

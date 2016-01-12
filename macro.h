@@ -16,6 +16,6 @@ struct	macline
 
 typedef struct  macline	*Line_ptr;
 
-extern void def_macro ();
-extern Obj_ptr get_macro ();
-extern void exp_macro ();
+extern void def_macro (char *linebuffer, FILE *inp, const char *fname, int lno);
+extern Obj_ptr get_macro (const char *name);
+extern void exp_macro (Obj_ptr macro, const char *fname, int lno);

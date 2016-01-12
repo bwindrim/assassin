@@ -25,8 +25,7 @@ byte_ptr	genptr;
 static FILE    *gen_file;
 
 
-void	gen_init(address)
-unsigned	address;
+void	gen_init(unsigned int address)
 {
   load_addr =
   exe_addr  =
@@ -34,8 +33,7 @@ unsigned	address;
   genptr    = genbuffer;
 }
 
-void	gen_org (address)
-unsigned	address;
+void	gen_org (unsigned int address)
 {
   if (genaddr == load_addr)
     {
@@ -47,8 +45,7 @@ unsigned	address;
   genptr  = genbuffer;
 }
 
-void gen_exec (address)
-unsigned address;
+void gen_exec (unsigned int address)
 {
     error = noerror;
 
@@ -58,8 +55,7 @@ unsigned address;
 	error = exeadderr;
 }
 
-void	genbyte (data)
-int	data;
+void	genbyte (int data)
 {
   if (data <= 255 && data >= -128)
     *genptr++ = data;
@@ -67,37 +63,31 @@ int	data;
     error = byterrstr;
 }
 
-void	genword (data)
-int	data;
+void	genword (int data)
 {
   *genptr++ = data >> 8;
   *genptr++ = data;
 }
 
-void	genbytebyte (data1, data2)
-byte	data1, data2;
+void	genbytebyte (byte data1, byte data2) /* FixMe */
 {
   genbyte (data1);
   genbyte (data2);
 }
 
-void	genbyteword (data1, data2)
-byte	data1;
-int	data2;
+void	genbyteword (byte data1, int data2)
 {
   genbyte (data1);
   genword (data2);
 }
 
-void	genwordword (data1, data2)
-int	data1, data2;
+void	genwordword (int data1, int data2)
 {
   genword (data1);
   genword (data2);
 }
 
-void	genstring (ptr)
-	char	*ptr;
+void	genstring (const char *ptr)
 {
   if (NULL == ptr)
     error = badstrerr;
@@ -106,7 +96,7 @@ void	genstring (ptr)
       *genptr++ = *ptr++;
 }
 
-void	dumpcode ()
+void	dumpcode (void)
 {
   static int length;
 
@@ -123,7 +113,7 @@ void	dumpcode ()
     }
 }
 
-void	flushcode ()
+void	flushcode (void)
 {
   if (1 < pass &&
       (symerrstr == error ||
@@ -138,16 +128,13 @@ void	flushcode ()
   genptr = genbuffer;
 }
 
-void	fputmw (fp, word)
-FILE	*fp;
-unsigned	word;
+void	fputmw (FILE *fp, unsigned int word)
 {
   putc (word >> 8, fp);
   putc (word & 0xff, fp);
 }
 
-void	gen_open (filename)
-char	*filename;
+void	gen_open (const char *filename)
 {
   char	 buffer [20];
   static char	*ptr;
@@ -171,13 +158,13 @@ char	*filename;
   fputmw (gen_file, code_length);
 }
 
-void gen_close ()
+void gen_close (void)
 {
     fputmw (gen_file, exe_addr);
     fclose (gen_file);
 }
 
-void	dumpblock ()
+void	dumpblock (void)
 {
 
   if (!gen)

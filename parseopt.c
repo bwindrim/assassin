@@ -5,11 +5,12 @@
 #include "const.h"
 #include "parseopt.h"
 
-int parse_opt (table, size, argc, argv)
-	struct opt_rec table [];
-	int size;
-	int *argc;
-	char *argv [];
+int parse_opt (
+     struct opt_rec table [],
+     int size,
+     int *argc,
+     char *argv []
+)
 {
 	static struct opt_rec *opt_ptr;
 	static char **arg_ptr;
@@ -73,10 +74,11 @@ int parse_opt (table, size, argc, argv)
     return count;
 }
 
-int noarg_opt (opt, argc, argv)
-    struct opt_rec *opt;
-    int argc;
-    char *argv [];
+int noarg_opt (
+    struct opt_rec *opt,
+    int argc,
+    char *argv []
+)
 {
     static int *ip;
 
@@ -86,10 +88,11 @@ int noarg_opt (opt, argc, argv)
     return TRUE;
 }
 
-int starg_opt (opt, argc, argv)
-    struct opt_rec *opt;
-    int argc;
-    char *argv [];
+int starg_opt (
+    struct opt_rec *opt,
+    int argc,
+    char *argv []
+)
 {
     static char **cpp;
 

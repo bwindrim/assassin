@@ -3,7 +3,7 @@
 #define TRUE  1
 #define FALSE 0
 
-#define TITLE_STR	"Assassin - 6809 assembler V1.6"
+#define TITLE_STR	"Assassin - 6809 assembler V1.7"
 #define CMD_NAME	"as"
 
 #define	BLOCK			0x01

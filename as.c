@@ -34,9 +34,7 @@ struct opt_rec table [] =
 };
 
 
-void	main (argc,argv)
-	int  argc;
-	char *argv [];
+void	main (int argc, char *argv[])
 {
   static char **argp;
   static int  argcount;

@@ -8,9 +8,9 @@
  *				*
  ********************************/
 
-extern int eval_str ();
-extern int eval ();
-extern int dec_conv ();
-extern int hex_conv ();
-extern int bin_conv ();
-extern int chr_conv ();
+extern int eval_str (const char *str);
+extern int eval     (const char *start, const char *str);
+extern int dec_conv (const char *start, const char *end);
+extern int hex_conv (const char *start, const char *end);
+extern int bin_conv (const char *start, const char *end);
+extern int chr_conv (const char *start, const char *end);

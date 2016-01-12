@@ -8,8 +8,8 @@
  *				*
  ********************************/
 
-extern void defb ();
-extern void defw ();
-extern void defs ();
-extern void redef ();
+extern void defb (void);
+extern void defw (void);
+extern void defs (void);
+extern void redef (void);
 

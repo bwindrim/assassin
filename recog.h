@@ -13,7 +13,13 @@ extern char
 	*op_str,
 	*addr_str;
 
-extern void outline ();
-extern void parse ();
-extern void parse_stream ();
-extern void parse_file ();
+extern void outline (char	*linebuffer,
+		 const char    *fname,
+		 int      lno);
+extern void parse (char	*linebuffer,
+	       FILE	*inp,
+	       const char    *fname,
+	       int      lno);
+extern void parse_stream (FILE	*fp,
+		      const char    *fname);
+extern void parse_file (const char *filename);

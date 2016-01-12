@@ -43,15 +43,37 @@ extern Obj_ptr
 	block_stack [BLOCK_STACK_SIZE],
 	*block_ptr;
 
-extern void insert_symbol ();
-extern Obj_ptr find_local_sym ();
-extern void create_block ();
-extern void open_block ();
-extern void end_block ();
-extern void insert_symbol ();
-extern void add_symbol ();
-extern Obj_ptr add_macro ();
-extern Obj_ptr find_global_sym ();
-extern Obj_ptr find_name_sym ();
-extern int symbol_val ();
-extern void redef_sym ();
+extern void insert_symbol (char	stype,
+char	*sname,
+Obj_ptr	new_symbol,
+Obj_ptr	block);
+extern Obj_ptr find_local_sym (const char	*start,
+    const char        *end,
+    int		stype,
+    Obj_ptr     block);
+extern void create_block (const char *block_name);
+extern void open_block (const char *block_name);
+extern void end_block (void);
+extern void insert_symbol (char	stype,
+char	*sname,
+Obj_ptr	new_symbol,
+Obj_ptr	block);
+extern void add_symbol (char	stype,
+     char	*sname,
+     int	svalue,
+     Obj_ptr	block);
+extern Obj_ptr add_macro (char	*sname,
+		   int	params,
+		   Obj_ptr	block);
+extern Obj_ptr find_global_sym (const char	*start,
+    const char        *end,
+    char	stype,
+    Obj_ptr     block);
+extern Obj_ptr find_name_sym (const char	*start,
+		       const char     *end,
+		       char	stype);
+extern int symbol_val (const char *start,
+    const char *end);
+extern void redef_sym (char	stype,
+		    const char   *sname,
+		    int	svalue);

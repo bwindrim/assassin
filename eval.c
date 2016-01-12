@@ -22,8 +22,7 @@
 #include "eval.h"
 
 
-int eval_str (str)
-	char	*str;
+int eval_str (const char *str)
 {
 static	char	*cut;
 
@@ -45,10 +44,9 @@ static	char	*cut;
 }
 
 
-int	eval (start, end)
-char	*start, *end;
+int	eval (const char *start, const char *end)
 {
-  char	*ptr, *cut;
+  const char	*ptr, *cut;
   int	paren, level;
 
   /* skip leading and trailing spaces, and strip matching brackets */
@@ -199,8 +197,7 @@ char	*start, *end;
   return 0;  /* keeps compiler happy */
 }
 
-int	dec_conv (start, end)
-char	*start, *end;
+int	dec_conv (const char *start, const char *end)
 {
   static int retval;
 
@@ -230,8 +227,7 @@ char	*start, *end;
   return (retval);
 }
 
-int	hex_conv (start, end)
-char	*start, *end;
+int	hex_conv (const char *start, const char *end)
 {
   static int retval;
 
@@ -270,8 +266,7 @@ char	*start, *end;
   return (retval);
 }
 
-int	bin_conv (start, end)
-char	*start, *end;
+int	bin_conv (const char *start, const char *end)
 {
   static int retval;
 
@@ -300,8 +295,7 @@ char	*start, *end;
   return (retval);
 }
 
-int	chr_conv (start, end)
-char	*start, *end;
+int	chr_conv (const char *start, const char *end)
 {
   static int retval;
   static int count;
