@@ -69,13 +69,13 @@ void	genword (int data)
   *genptr++ = data;
 }
 
-void	genbytebyte (byte data1, byte data2) /* FixMe */
+void	genbytebyte (int data1, int data2) /* FixMe */
 {
   genbyte (data1);
   genbyte (data2);
 }
 
-void	genbyteword (byte data1, int data2)
+void	genbyteword (int data1, int data2)
 {
   genbyte (data1);
   genword (data2);
