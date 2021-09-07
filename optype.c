@@ -325,10 +325,12 @@ void	typext (int code)
     error = dsterrstr;
 
   if (!error)
+  {
     if (((dcode & 0x88) == 0x80) || ((dcode & 0x88) == 0x08))
       error = sizerrstr;
     else
       genbyte (dcode);
+  }
 }
 
 void	typebr (unsigned int nextw, unsigned int lso)
@@ -399,15 +401,18 @@ void	typebr (unsigned int nextw, unsigned int lso)
   forward_sym = FALSE;
 
   val = branchaddr () - (genaddr + 2);
+  lso = LONG; /* force long-form branches (ToDo: fix this) */
 
   if (OPT == lso)
+  {
     if (val <= 127 && val >= -128 && !forward_sym && (val <= -2))
       lso = SHORT;
     else
       lso = LONG;
+  }
 
   if (SHORT == lso)
-    genbytebyte (code, val);
+    genbytebyte (code & 0xFF, val);
   else if ((code & 0xFF00) == 0x1000)
     genwordword (code, val - 2);
   else

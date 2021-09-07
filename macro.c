@@ -27,7 +27,7 @@
 
 void	def_macro (char *linebuffer, FILE *inp, const char *fname, int lno)
 {
-  static char	*next_param, *ptr;
+  static char	*ptr;
   static char	**param_ptr, **scan_ptr,
 		*param [MAX_MACRO_PARAMS] = {"?", "sym", "tail"};
 /*  char	buffer [TEXT_BUFF_SIZE];*/

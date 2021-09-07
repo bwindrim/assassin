@@ -13,6 +13,7 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #include "const.h"
 #include "typedefs.h"
@@ -96,8 +97,9 @@ void	outline (
       if (1 != pass)
 	{
 	  ++err_count;
+	  char *psErr = errtext[error];
 	  fprintf (stderr, "%04X:           %s", genaddr, linebuffer);
-	  fprintf (stderr, err2frmstr, fname, lno, errtext [error]);
+	  fprintf (stderr, err2frmstr, fname, lno, psErr);
 	}
 
       error = noerror;
@@ -121,10 +123,10 @@ static void	end_line (
 }
 
 
-static bool	split_line (char *buffer)
+static void	split_line (char *buffer)
 {
   static char *ch, *name;
-  static char loc_buf [TEXT_BUFF_SIZE];
+  char *loc_buf = malloc(TEXT_BUFF_SIZE);/* accessed after return */
   static bool quote_flag;
 
   curr_name = NULL;
@@ -138,7 +140,7 @@ static bool	split_line (char *buffer)
       if (NULL == (name = (char_ptr) malloc ((ch - buffer) + 1)))
 	{
 	  error = memerrstr;
-	  return FALSE;   /* value not needed, keeps compiler happy */
+	  return;
 	}
 
       for (ch = name;
@@ -203,6 +205,8 @@ void	parse (
   static unsigned firstw, nextw;
   static Obj_ptr  macro;
 
+if (NULL == fname || 0 == strlen(fname))
+	printf("parse(%s)\n", fname);
 
   nextaddr = 0;
   forward_sym = FALSE;
@@ -637,103 +641,46 @@ void	parse (
 }
 
 
-static bool	ctrl_c_hit (void)
-{
-/* need none of this
-  if (keyhit () && (3 == rawin ()))
-    {
-      error = intrerrstr;
-
-      return (TRUE);
-    }
-*/
-
-  return (FALSE);
-}
-
-
 void	parse_stream (
 		      FILE	*fp,
 		      const char    *fname
 		      )
 {
-  static char textbuffer [TEXT_BUFF_SIZE];
-  int local_count;
+  char textbuffer [TEXT_BUFF_SIZE];
+  int local_count = 0;
 
-  local_count = 0;
+	printf("parse_stream(%s)\n", fname);
 
-  while (fgets (textbuffer, TEXT_BUFF_SIZE, fp))
+   while (fgets (textbuffer, TEXT_BUFF_SIZE, fp))
     {
 /*      if (debug) dump_obj (&root_block, 0);*/
 
       ++local_count;
       parse (textbuffer, fp, fname, local_count);
       ++lcount;
-
-      if (ctrl_c_hit ())
-	{
-	  fprintf (stderr, errfrmstr, errtext [intrerrstr]);
-	  exit (3);
-	}
     }
 }
 
 
 void	parse_file (const char *filename)
 {
-  static FILE *inp;
-  static int level = -1;
-  FILE *inp_save;
-  int	pos;
-  char  name [15];
+	printf("parse_file(%s)\n", filename);
 
-  if (0 == strlen (filename))
+  	if (0 == strlen (filename))
     {
       error = inclerrstr;
 
       return;
     }
 
-  /* can do without this stuff
-    if (0 < level++)
-    {
-	* stream already in use *
+	FILE *inp = fopen (filename, "r");
 
-	pos = ftell (inp);
-	fname (inp, name);
-	fclose (inp);
-    }
-    else
-    {
-	inp_save = inp;
-    }
-*/
-
-  if (NULL == (inp = fopen (filename, "r")))
+   	if (NULL == inp)
     {
       fprintf (stderr, filerrstr, filename, "reading");
       exit (1);
     }
-  else
-    {
-      parse_stream (inp, filename);
-      fclose (inp);
-    }
-
-  /* and this stuff
-    if (0 < --level)
-    {
-	if (NULL == (inp = fopen (name, "r")))
-	{
-	     fprintf (stderr, filerrstr, name, "reading");
-	     exit (1);
-	}
-
-	fseek (inp, 0, pos, 0);
-    }
-    else
-    {
-	inp = inp_save;
-    }
-    */
+ 
+    parse_stream (inp, filename);
+	fclose (inp);
 }

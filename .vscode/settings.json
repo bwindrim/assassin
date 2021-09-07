@@ -1,0 +1,12 @@
+{
+    "makefile.launchConfigurations": [
+        {
+            "cwd": "/home/brian/C/6809",
+            "binaryPath": "/home/brian/C/assassin/as6809",
+            "binaryArgs": ["newtick.a"]
+        }
+    ],
+    "files.associations": {
+        "cstdio": "c"
+    }
+}

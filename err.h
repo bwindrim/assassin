@@ -42,4 +42,4 @@
 #define noblkerr   41
 #define exeadderr  42
 
-extern char errtext [];
+extern char *errtext [];

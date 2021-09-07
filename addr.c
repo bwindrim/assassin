@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <setjmp.h>
 #include <ctype.h>
+#include <assert.h>
 
 #include "const.h"
 #include "typedefs.h"
@@ -81,6 +82,7 @@ int addmode (void)
           cut   = scan++;
           mode  = BASE;
           if (*scan == '-')
+          {
             if (*++scan == '-')
               {
                 mode = WDEC;
@@ -88,7 +90,7 @@ int addmode (void)
               }
             else
               mode = BDEC;
-
+          }
           regno = 0;
           switch (reg = (CASEMASK & *scan++))
             {
@@ -97,6 +99,7 @@ int addmode (void)
               case 'Y':regno += 0x20;
               case 'X':if (mode == BASE)
                          if (*scan == '+')
+                         {
                            if (*++scan == '+')
                              {
                                mode = WINC;
@@ -106,6 +109,7 @@ int addmode (void)
                              {
                                mode = BINC;
                              }
+                         }
                        break;
 
               case 'P':if ((CASEMASK & *scan) != 'C')
@@ -251,5 +255,6 @@ int addmode (void)
                      return (EXT);
                    }
     }
+    assert(0);
 }
 

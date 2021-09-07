@@ -98,9 +98,9 @@ void	genstring (const char *ptr)
 
 void	dumpcode (void)
 {
-  static int length;
+  int length = genptr - genbuffer;
 
-  if (length = (genptr - genbuffer))
+  if (length > 0)
     {
       if (!gen)
         code_length += length;

@@ -17,7 +17,7 @@ objects=addr.o \
 CC=gcc
 DEFINES=
 DBGFLAGS=-g
-CFLAGS=$(DBGFLAGS) $(DEFINES) -Werror
+CFLAGS=$(DBGFLAGS) $(DEFINES) -Wall
 LDFLAGS=$(DBGFLAGS)
 
 $(target) : $(objects)

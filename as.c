@@ -34,7 +34,7 @@ struct opt_rec table [] =
 };
 
 
-void	main (int argc, char *argv[])
+int	main (int argc, char *argv[])
 {
   static char **argp;
   static int  argcount;
@@ -76,6 +76,8 @@ void	main (int argc, char *argv[])
 	  err_count = 0;
 	  lcount    = 0;
 
+	  printf("Pass %d\n", pass);
+	  
 	  if (1 == pass)
 	      printf ("%s%s", TITLE_STR, list_flag ? "\n\n" : "\n");
 
