@@ -56,6 +56,7 @@ class Assembler:
         'JMP': 0x7E, 'JSR': 0xBD, 'LDX': 0xCE, 'STX': 0xFF,
         'LDY': 0x10CE, 'STY': 0x10FF, 'CMPA': 0x81, 'CMPX': 0x8C,
         'BRA': 0x20, 'BEQ': 0x27, 'BNE': 0x26, 'RTS': 0x39,
+        'RTI': 0x3B,      # RTI opcode (inherent)
         'LEAY': 0x31,      # LEAY opcode (indexed addressing)
         'LEAX': 0x30,      # LEAX opcode (indexed addressing)
         'LDU': 0xCE,       # LDU opcode (immediate/direct/extended)
@@ -77,6 +78,17 @@ class Assembler:
         line = line.strip()
         if not line or line.startswith(';'):
             return
+
+        # Label support: detect and store label before instruction/directive
+        label = None
+        if ':' in line:
+            parts = line.split(':', 1)
+            label = parts[0].strip()
+            line = parts[1].strip() if len(parts) > 1 else ''
+            if label:
+                self.symbol_table.add_symbol(label, str(self.current_addr))
+                print(f'LABEL: {label} @ {self.current_addr:04X}')
+
         tokens = line.split()
         if not tokens:
             return
@@ -141,7 +153,12 @@ class Assembler:
                     mode = 'IMMEDIATE'
                     try:
                         val = operands[0][1:]
-                        operand_bytes.append(parse_value(val))
+                        # Try to resolve as label first
+                        label_val = self.symbol_table.lookup(val)
+                        if label_val is not None:
+                            operand_bytes.append(parse_value(label_val))
+                        else:
+                            operand_bytes.append(parse_value(val))
                     except ValueError:
                         self.errors.append(f'Invalid immediate value: {operands[0]}')
                 elif operands[0].startswith('<') or operands[0].startswith('>'):
