@@ -337,9 +337,15 @@ class Assembler:
                         val = operands[0][1:]
                         label_val = self.symbol_table.lookup(val)
                         if label_val is not None:
-                            operand_bytes.append(parse_value(label_val))
+                            imm = parse_value(label_val)
                         else:
-                            operand_bytes.append(parse_value(val))
+                            imm = parse_value(val)
+                        # If loading to 16-bit register, output two bytes
+                        if mnemonic in ('LDX', 'LDY', 'LDU', 'LDS', 'LDD'):
+                            operand_bytes.append((imm >> 8) & 0xFF)
+                            operand_bytes.append(imm & 0xFF)
+                        else:
+                            operand_bytes.append(imm)
                     except ValueError:
                         self.errors.append(f'Invalid immediate value: {operands[0]}')
                 elif operands[0].startswith('<') or operands[0].startswith('>'):
