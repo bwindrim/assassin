@@ -350,25 +350,41 @@ class Assembler:
                     except ValueError:
                         self.errors.append(f'Invalid direct/extended value: {operands[0]}')
                 elif ',' in ' '.join(operands):
-                    mode = 'INDEXED'
-                    # Simple indexed addressing: e.g. LDA 5,X
-                    # Parse as: value, register
-                    try:
-                        idx_parts = ' '.join(operands).split(',')
-                        value = idx_parts[0].strip()
-                        reg = idx_parts[1].strip().upper()
-                        val = self.symbol_table.lookup(value)
-                        if val is not None:
-                            value_num = parse_value(val)
-                        else:
-                            value_num = parse_value(value)
-                        # MC6809 indexed mode: offset byte, register code (X=0x84, Y=0xA4, U=0xC4, S=0xE4)
-                        reg_codes = {'X': 0x84, 'Y': 0xA4, 'U': 0xC4, 'S': 0xE4}
-                        reg_code = reg_codes.get(reg, 0x84)
-                        operand_bytes.append(value_num)
-                        operand_bytes.append(reg_code)
-                    except Exception:
-                        self.errors.append(f'Invalid indexed addressing: {" ".join(operands)}')
+                    if mnemonic == 'EXG':
+                        mode = 'EXG'
+                        # EXG r1,r2: MC6809 register codes
+                        reg_map = {
+                            'D': 0x00, 'X': 0x01, 'Y': 0x02, 'U': 0x03, 'S': 0x04,
+                            'PC': 0x05, 'A': 0x08, 'B': 0x09, 'CC': 0x0A, 'DP': 0x0B
+                        }
+                        try:
+                            exg_parts = ' '.join(operands).split(',')
+                            r1 = exg_parts[0].strip().upper()
+                            r2 = exg_parts[1].strip().upper()
+                            code = (reg_map.get(r1, 0) << 4) | reg_map.get(r2, 0)
+                            operand_bytes.append(code)
+                        except Exception:
+                            self.errors.append(f'Invalid EXG operands: {" ".join(operands)}')
+                    else:
+                        mode = 'INDEXED'
+                        # Simple indexed addressing: e.g. LDA 5,X
+                        # Parse as: value, register
+                        try:
+                            idx_parts = ' '.join(operands).split(',')
+                            value = idx_parts[0].strip()
+                            reg = idx_parts[1].strip().upper()
+                            val = self.symbol_table.lookup(value)
+                            if val is not None:
+                                value_num = parse_value(val)
+                            else:
+                                value_num = parse_value(value)
+                            # MC6809 indexed mode: offset byte, register code (X=0x84, Y=0xA4, U=0xC4, S=0xE4)
+                            reg_codes = {'X': 0x84, 'Y': 0xA4, 'U': 0xC4, 'S': 0xE4}
+                            reg_code = reg_codes.get(reg, 0x84)
+                            operand_bytes.append(value_num)
+                            operand_bytes.append(reg_code)
+                        except Exception:
+                            self.errors.append(f'Invalid indexed addressing: {" ".join(operands)}')
                 else:
                     mode = 'ABSOLUTE'
                     val = self.symbol_table.lookup(operands[0])
