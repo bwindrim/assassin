@@ -292,30 +292,31 @@ class Assembler:
         elif directive == 'end':
             pass
         elif directive in ('db', 'defb'):
+            bytes_out = []
             for val in tokens[1:]:
                 try:
                     b = parse_value(val)
-                    print(f'GENBYTE: {b:02X} @ {self.current_addr:04X}')
+                    bytes_out.append(b)
                     self.current_addr += 1
                 except ValueError:
                     self.errors.append(f'Invalid byte value: {val}')
+            self.print_listing(bytes_out, line)
         elif directive in ('dw', 'defw'):
+            bytes_out = []
             for val in tokens[1:]:
                 try:
                     w = parse_value(val)
-                    print(f'GENWORD: {w:04X} @ {self.current_addr:04X}')
+                    bytes_out.extend([(w >> 8) & 0xFF, w & 0xFF])
                     self.current_addr += 2
                 except ValueError:
                     self.errors.append(f'Invalid word value: {val}')
+            self.print_listing(bytes_out, line)
         elif directive in ('ds', 'defs'):
-            if len(tokens) > 1:
-                try:
-                    count = parse_value(tokens[1])
-                    print(f'GENSPACE: {count} bytes @ {self.current_addr:04X}')
-                    self.current_addr += count
-                except ValueError:
-                    self.errors.append(f'Invalid space value: {tokens[1]}')
+            bytes_out = [0] * parse_value(tokens[1]) if len(tokens) > 1 else []
+            self.current_addr += len(bytes_out)
+            self.print_listing(bytes_out, line)
         elif '=' in line:
+            self.print_listing([], line)
             parts = line.split('=')
             name = parts[0].strip()
             value = parts[1].strip()
@@ -323,6 +324,7 @@ class Assembler:
         else:
             mnemonic = tokens[0].upper()
             opcode = self.OPCODES.get(mnemonic)
+            bytes_out = []
             if opcode is not None:
                 operands = tokens[1:] if len(tokens) > 1 else []
                 mode = None
@@ -349,6 +351,24 @@ class Assembler:
                         self.errors.append(f'Invalid direct/extended value: {operands[0]}')
                 elif ',' in ' '.join(operands):
                     mode = 'INDEXED'
+                    # Simple indexed addressing: e.g. LDA 5,X
+                    # Parse as: value, register
+                    try:
+                        idx_parts = ' '.join(operands).split(',')
+                        value = idx_parts[0].strip()
+                        reg = idx_parts[1].strip().upper()
+                        val = self.symbol_table.lookup(value)
+                        if val is not None:
+                            value_num = parse_value(val)
+                        else:
+                            value_num = parse_value(value)
+                        # MC6809 indexed mode: offset byte, register code (X=0x84, Y=0xA4, U=0xC4, S=0xE4)
+                        reg_codes = {'X': 0x84, 'Y': 0xA4, 'U': 0xC4, 'S': 0xE4}
+                        reg_code = reg_codes.get(reg, 0x84)
+                        operand_bytes.append(value_num)
+                        operand_bytes.append(reg_code)
+                    except Exception:
+                        self.errors.append(f'Invalid indexed addressing: {" ".join(operands)}')
                 else:
                     mode = 'ABSOLUTE'
                     val = self.symbol_table.lookup(operands[0])
@@ -362,10 +382,23 @@ class Assembler:
                             operand_bytes.append(parse_value(operands[0]))
                         except ValueError:
                             self.errors.append(f'Unknown label or value: {operands[0]}')
-                print(f'INSTR: {mnemonic} {" ".join(operands)} | MODE: {mode} | OPCODE: {opcode:04X} | OPERANDS: {operand_bytes} @ {self.current_addr:04X}')
-                self.current_addr += 1 + len(operand_bytes)
+                # Output opcode and operands
+                if opcode > 0xFF:
+                    bytes_out.append((opcode >> 8) & 0xFF)
+                    bytes_out.append(opcode & 0xFF)
+                else:
+                    bytes_out.append(opcode)
+                bytes_out.extend(operand_bytes)
+                self.print_listing(bytes_out, line)
+                self.current_addr += len(bytes_out)
             else:
+                self.print_listing([], line)
                 self.errors.append(f'Unknown instruction or directive: {mnemonic}')
+
+    def print_listing(self, bytes_out, line):
+        if self.list_flag:
+            hex_bytes = ' '.join(f'{b:02X}' for b in bytes_out)
+            print(f'{hex_bytes:<12} {line}')
 
     def assemble(self):
         # Pass 1: symbol resolution
