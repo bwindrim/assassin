@@ -373,21 +373,34 @@ class Assembler:
                             self.errors.append(f'Invalid EXG operands: {" ".join(operands)}')
                     else:
                         mode = 'INDEXED'
-                        # Simple indexed addressing: e.g. LDA 5,X
-                        # Parse as: value, register
+                        # Support MC6809 auto-increment: ,X+ and ,X++
                         try:
-                            idx_parts = ' '.join(operands).split(',')
+                            idx_str = ' '.join(operands)
+                            idx_parts = idx_str.split(',')
                             value = idx_parts[0].strip()
                             reg = idx_parts[1].strip().upper()
+                            # Detect auto-increment
+                            auto_inc = 0
+                            if reg.endswith('++'):
+                                reg = reg[:-2]
+                                auto_inc = 2
+                            elif reg.endswith('+'):
+                                reg = reg[:-1]
+                                auto_inc = 1
                             val = self.symbol_table.lookup(value)
-                            if val is not None:
+                            if val is not None and value:
                                 value_num = parse_value(val)
-                            else:
+                            elif value:
                                 value_num = parse_value(value)
+                            else:
+                                value_num = None
                             # MC6809 indexed mode: offset byte, register code (X=0x84, Y=0xA4, U=0xC4, S=0xE4)
                             reg_codes = {'X': 0x84, 'Y': 0xA4, 'U': 0xC4, 'S': 0xE4}
                             reg_code = reg_codes.get(reg, 0x84)
-                            operand_bytes.append(value_num)
+                            # Auto-increment: add 0x10 for +, 0x20 for ++
+                            reg_code += auto_inc * 0x10
+                            if value_num is not None:
+                                operand_bytes.append(value_num)
                             operand_bytes.append(reg_code)
                         except Exception:
                             self.errors.append(f'Invalid indexed addressing: {" ".join(operands)}')
