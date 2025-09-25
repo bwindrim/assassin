@@ -432,8 +432,12 @@ class Assembler:
 
     def print_listing(self, bytes_out, line):
         if self.list_flag:
-            hex_bytes = ' '.join(f'{b:02X}' for b in bytes_out)
-            print(f'{hex_bytes:<12} {line}')
+            line_prefix = f'{self.current_addr:04X}: '
+            if bytes_out:
+                hex_bytes = ' '.join(f'{b:02X}' for b in bytes_out)
+                print(f'{line_prefix}{hex_bytes:<12} {line}')
+            else:
+                print(f'{line_prefix}      {line}')
 
     def assemble(self):
         # Pass 1: symbol resolution
