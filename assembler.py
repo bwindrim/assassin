@@ -105,7 +105,7 @@ class Assembler:
             label = parts[0].strip()
             line = parts[1].strip() if len(parts) > 1 else ''
             if label:
-                self.symbol_table.add_symbol(label, str(self.current_addr))
+                self.symbol_table.add_symbol(label, self.current_addr)
                 print(f'LABEL: {label} @ {self.current_addr:04X}')
 
         tokens = line.split()
@@ -272,14 +272,11 @@ class Assembler:
             parts = line.split('=')
             name = parts[0].strip()
             value = parts[1].strip()
-            # Try to parse value as integer
+            # Always try to store as integer if possible
             try:
-                if value.startswith('$'):
-                    num_value = int(value[1:], 16)
-                else:
-                    num_value = int(value, 0)
+                num_value = self.parse_value(value)
                 self.symbol_table.add_symbol(name, num_value)
-            except ValueError:
+            except Exception:
                 self.symbol_table.add_symbol(name, value)
         else:
             self.current_addr += 1 # opcode
@@ -354,7 +351,12 @@ class Assembler:
             parts = line.split('=')
             name = parts[0].strip()
             value = parts[1].strip()
-            self.symbol_table.add_symbol(name, value)
+            # Always try to store as integer if possible
+            try:
+                num_value = self.parse_value(value)
+                self.symbol_table.add_symbol(name, num_value)
+            except Exception:
+                self.symbol_table.add_symbol(name, value)
         else:
             mnemonic = tokens[0].upper()
             # Select correct opcode for indexed addressing
