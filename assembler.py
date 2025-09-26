@@ -443,10 +443,17 @@ class Assembler:
                             # Auto-increment: add 0x08 for +, 0x10 for ++
                             reg_code += auto_inc * 0x08
                             if value_num is not None and value != '':
-                                # 16-bit offset: postbyte 0x89 + offset
-                                operand_bytes.append(0x89 | reg_code)
-                                operand_bytes.append((value_num >> 8) & 0xFF)
-                                operand_bytes.append(value_num & 0xFF)
+                                # Compact 5-bit signed offset (-16..15)
+                                if -16 <= value_num <= 15:
+                                    # MC6809: postbyte = offset (5 bits, signed) | reg_code
+                                    offset = value_num & 0x1F
+                                    postbyte = offset | reg_code
+                                    operand_bytes.append(postbyte)
+                                else:
+                                    # 16-bit offset: postbyte 0x89 + offset
+                                    operand_bytes.append(0x89 | reg_code)
+                                    operand_bytes.append((value_num >> 8) & 0xFF)
+                                    operand_bytes.append(value_num & 0xFF)
                             else:
                                 # No offset: just register postbyte
                                 operand_bytes.append(0x84 | reg_code)
