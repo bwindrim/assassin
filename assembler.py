@@ -59,7 +59,7 @@ class Assembler:
         'SUB': 0x80,      # SUB opcode (immediate/direct/extended)
         'JMP': 0x7E,      # JMP opcode (extended)
         'JSR': 0xBD,      # JSR opcode (extended)
-    'LDX': 0x8E,      # LDX opcode (immediate/direct/extended)
+        'LDX': 0x8E,      # LDX opcode (immediate/direct/extended)
         'STX': 0xFF,      # STX opcode (extended)
         'LDY': 0x10CE,    # LDY opcode (immediate/direct/extended)
         'STY': 0x10FF,    # STY opcode (extended)
@@ -83,10 +83,13 @@ class Assembler:
 
     def parse_line(self, line):
         def parse_value(val):
-            val = val.strip()
-            if val.startswith('$'):
-                return int(val[1:], 16)
-            return int(val, 0)
+            if isinstance(val, int):
+                return val
+            if isinstance(val, str):
+                if val.startswith('$'):
+                    return int(val[1:], 16)
+                return int(val, 0)
+            raise ValueError(f'Cannot parse value: {val}')
 
         line = line.strip()
         if not line or line.startswith(';'):
@@ -235,7 +238,7 @@ class Assembler:
             parts = line.split(':', 1)
             label = parts[0].strip()
             if label:
-                self.symbol_table.add_symbol(label, str(self.current_addr))
+                self.symbol_table.add_symbol(label, self.current_addr)
         tokens = line.split()
         if not tokens:
             return
@@ -266,7 +269,15 @@ class Assembler:
             parts = line.split('=')
             name = parts[0].strip()
             value = parts[1].strip()
-            self.symbol_table.add_symbol(name, value)
+            # Try to parse value as integer
+            try:
+                if value.startswith('$'):
+                    num_value = int(value[1:], 16)
+                else:
+                    num_value = int(value, 0)
+                self.symbol_table.add_symbol(name, num_value)
+            except ValueError:
+                self.symbol_table.add_symbol(name, value)
         else:
             self.current_addr += 1 # opcode
             # crude: add 1 for operand if present
@@ -275,10 +286,14 @@ class Assembler:
 
     def parse_line_generate_code(self, line):
         def parse_value(val):
-            val = val.strip()
-            if val.startswith('$'):
-                return int(val[1:], 16)
-            return int(val, 0)
+            if isinstance(val, int):
+                return val
+            if isinstance(val, str):
+                val = val.strip()
+                if val.startswith('$'):
+                    return int(val[1:], 16)
+                return int(val, 0)
+            raise ValueError(f'Cannot parse value: {val}')
 
         line = line.strip()
         if not line or line.startswith(';'):
