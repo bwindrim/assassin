@@ -6,6 +6,8 @@ import sys
 import argparse
 from collections import defaultdict
 
+
+
 class Block:
     def __init__(self, name, parent=None):
         self.name = name
@@ -81,16 +83,17 @@ class Assembler:
         'CMPB': 0xC1,     # CMPB opcode (immediate/direct/extended)
     }
 
-    def parse_line(self, line):
-        def parse_value(val):
-            if isinstance(val, int):
-                return val
-            if isinstance(val, str):
-                if val.startswith('$'):
-                    return int(val[1:], 16)
-                return int(val, 0)
-            raise ValueError(f'Cannot parse value: {val}')
+    def parse_value(self, val):
+        if isinstance(val, int):
+            return val
+        if isinstance(val, str):
+            val = val.strip()
+            if val.startswith('$'):
+                return int(val[1:], 16)
+            return int(val, 0)
+        raise ValueError(f'Cannot parse value: {val}')
 
+    def parse_line(self, line):
         line = line.strip()
         if not line or line.startswith(';'):
             return
@@ -112,7 +115,7 @@ class Assembler:
         if directive == 'org':
             if len(tokens) > 1:
                 try:
-                    self.origin = parse_value(tokens[1])
+                    self.origin = self.parse_value(tokens[1])
                     self.current_addr = self.origin
                     print(f'ORG set to {self.origin:04X}')
                 except ValueError:
@@ -130,7 +133,7 @@ class Assembler:
         elif directive in ('db', 'defb'):
             for val in tokens[1:]:
                 try:
-                    b = parse_value(val)
+                    b = self.parse_value(val)
                     print(f'GENBYTE: {b:02X} @ {self.current_addr:04X}')
                     self.current_addr += 1
                 except ValueError:
@@ -138,7 +141,7 @@ class Assembler:
         elif directive in ('dw', 'defw'):
             for val in tokens[1:]:
                 try:
-                    w = parse_value(val)
+                    w = self.parse_value(val)
                     print(f'GENWORD: {w:04X} @ {self.current_addr:04X}')
                     self.current_addr += 2
                 except ValueError:
@@ -146,7 +149,7 @@ class Assembler:
         elif directive in ('ds', 'defs'):
             if len(tokens) > 1:
                 try:
-                    count = parse_value(tokens[1])
+                    count = self.parse_value(tokens[1])
                     print(f'GENSPACE: {count} bytes @ {self.current_addr:04X}')
                     self.current_addr += count
                 except ValueError:
@@ -185,16 +188,16 @@ class Assembler:
                         # Try to resolve as label first
                         label_val = self.symbol_table.lookup(val)
                         if label_val is not None:
-                            operand_bytes.append(parse_value(label_val))
+                            operand_bytes.append(self.parse_value(label_val))
                         else:
-                            operand_bytes.append(parse_value(val))
+                            operand_bytes.append(self.parse_value(val))
                     except ValueError:
                         self.errors.append(f'Invalid immediate value: {operands[0]}')
                 elif operands[0].startswith('<') or operands[0].startswith('>'):
                     mode = 'DIRECT' if operands[0][0] == '<' else 'EXTENDED'
                     try:
                         val = operands[0][1:]
-                        v = parse_value(val)
+                        v = self.parse_value(val)
                         # Always split 16-bit operands into two bytes
                         operand_bytes.append((v >> 8) & 0xFF)
                         operand_bytes.append(v & 0xFF)
@@ -207,12 +210,12 @@ class Assembler:
                     val = self.symbol_table.lookup(operands[0])
                     if val is not None:
                         try:
-                            operand_bytes.append(parse_value(val))
+                            operand_bytes.append(self.parse_value(val))
                         except ValueError:
                             self.errors.append(f'Invalid symbol value: {val}')
                     else:
                         try:
-                            operand_bytes.append(parse_value(operands[0]))
+                            operand_bytes.append(self.parse_value(operands[0]))
                         except ValueError:
                             self.errors.append(f'Unknown label or value: {operands[0]}')
                 print(f'INSTR: {mnemonic} {" ".join(operands)} | MODE: {mode} | OPCODE: {opcode:04X} | OPERANDS: {operand_bytes} @ {self.current_addr:04X}')
@@ -285,16 +288,6 @@ class Assembler:
                 self.current_addr += 1
 
     def parse_line_generate_code(self, line):
-        def parse_value(val):
-            if isinstance(val, int):
-                return val
-            if isinstance(val, str):
-                val = val.strip()
-                if val.startswith('$'):
-                    return int(val[1:], 16)
-                return int(val, 0)
-            raise ValueError(f'Cannot parse value: {val}')
-
         line = line.strip()
         if not line or line.startswith(';'):
             return
@@ -312,7 +305,7 @@ class Assembler:
         if directive == 'org':
             if len(tokens) > 1:
                 try:
-                    self.origin = parse_value(tokens[1])
+                    self.origin = self.parse_value(tokens[1])
                     self.current_addr = self.origin
                     print(f'ORG set to {self.origin:04X}')
                 except ValueError:
@@ -327,7 +320,7 @@ class Assembler:
             bytes_out = []
             for val in tokens[1:]:
                 try:
-                    b = parse_value(val)
+                    b = self.parse_value(val)
                     assert 0 <= b <= 255, f'Byte out of range: {b}'
                     bytes_out.append(b)
                     self.current_addr += 1
@@ -339,7 +332,7 @@ class Assembler:
             bytes_out = []
             for val in tokens[1:]:
                 try:
-                    w = parse_value(val)
+                    w = self.parse_value(val)
                     hi = (w >> 8) & 0xFF
                     lo = w & 0xFF
                     assert 0 <= hi <= 255, f'Word high byte out of range: {hi}'
@@ -352,7 +345,7 @@ class Assembler:
             self.binary.extend(bytes_out)
             self.print_listing(bytes_out, line)
         elif directive in ('ds', 'defs'):
-            bytes_out = [0] * parse_value(tokens[1]) if len(tokens) > 1 else []
+            bytes_out = [0] * self.parse_value(tokens[1]) if len(tokens) > 1 else []
             self.current_addr += len(bytes_out)
             self.binary.extend(bytes_out)
             self.print_listing(bytes_out, line)
@@ -390,9 +383,9 @@ class Assembler:
                         val = operands[0][1:]
                         label_val = self.symbol_table.lookup(val)
                         if label_val is not None:
-                            imm = parse_value(label_val)
+                            imm = self.parse_value(label_val)
                         else:
-                            imm = parse_value(val)
+                            imm = self.parse_value(val)
                         # If loading to 16-bit register, output two bytes
                         if mnemonic in ('LDX', 'LDY', 'LDU', 'LDS', 'LDD'):
                             hi = (imm >> 8) & 0xFF
@@ -410,7 +403,7 @@ class Assembler:
                     mode = 'DIRECT' if operands[0][0] == '<' else 'EXTENDED'
                     try:
                         val = operands[0][1:]
-                        operand_bytes.append(parse_value(val))
+                        operand_bytes.append(self.parse_value(val))
                     except ValueError:
                         self.errors.append(f'Invalid direct/extended value: {operands[0]}')
                 elif ',' in ' '.join(operands):
@@ -447,9 +440,9 @@ class Assembler:
                                 auto_inc = 1
                             val = self.symbol_table.lookup(value)
                             if val is not None and value:
-                                value_num = parse_value(val)
+                                value_num = self.parse_value(val)
                             elif value:
-                                value_num = parse_value(value)
+                                value_num = self.parse_value(value)
                             else:
                                 value_num = None
                             # MC6809 indexed mode: postbyte calculation
@@ -479,9 +472,9 @@ class Assembler:
                     val = self.symbol_table.lookup(operands[0])
                     try:
                         if val is not None:
-                            v = parse_value(val)
+                            v = self.parse_value(val)
                         else:
-                            v = parse_value(operands[0])
+                            v = self.parse_value(operands[0])
                         # Always split 16-bit operands into two bytes
                         operand_bytes.append((v >> 8) & 0xFF)
                         operand_bytes.append(v & 0xFF)
