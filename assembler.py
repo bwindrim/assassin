@@ -49,6 +49,7 @@ class Assembler:
         self.errors = []
         self.origin = 0
         self.current_addr = 0
+        self.binary = bytearray()
 
     # MC6809 opcode table (mnemonic: opcode)
     OPCODES = {
@@ -177,7 +178,10 @@ class Assembler:
                     mode = 'DIRECT' if operands[0][0] == '<' else 'EXTENDED'
                     try:
                         val = operands[0][1:]
-                        operand_bytes.append(parse_value(val))
+                        v = parse_value(val)
+                        # Always split 16-bit operands into two bytes
+                        operand_bytes.append((v >> 8) & 0xFF)
+                        operand_bytes.append(v & 0xFF)
                     except ValueError:
                         self.errors.append(f'Invalid direct/extended value: {operands[0]}')
                 elif ',' in ' '.join(operands):
@@ -296,24 +300,33 @@ class Assembler:
             for val in tokens[1:]:
                 try:
                     b = parse_value(val)
+                    assert 0 <= b <= 255, f'Byte out of range: {b}'
                     bytes_out.append(b)
                     self.current_addr += 1
                 except ValueError:
                     self.errors.append(f'Invalid byte value: {val}')
+            self.binary.extend(bytes_out)
             self.print_listing(bytes_out, line)
         elif directive in ('dw', 'defw'):
             bytes_out = []
             for val in tokens[1:]:
                 try:
                     w = parse_value(val)
-                    bytes_out.extend([(w >> 8) & 0xFF, w & 0xFF])
+                    hi = (w >> 8) & 0xFF
+                    lo = w & 0xFF
+                    assert 0 <= hi <= 255, f'Word high byte out of range: {hi}'
+                    assert 0 <= lo <= 255, f'Word low byte out of range: {lo}'
+                    bytes_out.append(hi)
+                    bytes_out.append(lo)
                     self.current_addr += 2
                 except ValueError:
                     self.errors.append(f'Invalid word value: {val}')
+            self.binary.extend(bytes_out)
             self.print_listing(bytes_out, line)
         elif directive in ('ds', 'defs'):
             bytes_out = [0] * parse_value(tokens[1]) if len(tokens) > 1 else []
             self.current_addr += len(bytes_out)
+            self.binary.extend(bytes_out)
             self.print_listing(bytes_out, line)
         elif '=' in line:
             self.print_listing([], line)
@@ -342,9 +355,14 @@ class Assembler:
                             imm = parse_value(val)
                         # If loading to 16-bit register, output two bytes
                         if mnemonic in ('LDX', 'LDY', 'LDU', 'LDS', 'LDD'):
-                            operand_bytes.append((imm >> 8) & 0xFF)
-                            operand_bytes.append(imm & 0xFF)
+                            hi = (imm >> 8) & 0xFF
+                            lo = imm & 0xFF
+                            assert 0 <= hi <= 255, f'Immediate high byte out of range: {hi}'
+                            assert 0 <= lo <= 255, f'Immediate low byte out of range: {lo}'
+                            operand_bytes.append(hi)
+                            operand_bytes.append(lo)
                         else:
+                            assert 0 <= imm <= 255, f'Immediate byte out of range: {imm & 0xFF}'
                             operand_bytes.append(imm)
                     except ValueError:
                         self.errors.append(f'Invalid immediate value: {operands[0]}')
@@ -400,23 +418,25 @@ class Assembler:
                             # Auto-increment: add 0x10 for +, 0x20 for ++
                             reg_code += auto_inc * 0x10
                             if value_num is not None:
-                                operand_bytes.append(value_num)
+                                # Always split 16-bit operands into two bytes
+                                operand_bytes.append((value_num >> 8) & 0xFF)
+                                operand_bytes.append(value_num & 0xFF)
                             operand_bytes.append(reg_code)
                         except Exception:
                             self.errors.append(f'Invalid indexed addressing: {" ".join(operands)}')
                 else:
                     mode = 'ABSOLUTE'
                     val = self.symbol_table.lookup(operands[0])
-                    if val is not None:
-                        try:
-                            operand_bytes.append(parse_value(val))
-                        except ValueError:
-                            self.errors.append(f'Invalid symbol value: {val}')
-                    else:
-                        try:
-                            operand_bytes.append(parse_value(operands[0]))
-                        except ValueError:
-                            self.errors.append(f'Unknown label or value: {operands[0]}')
+                    try:
+                        if val is not None:
+                            v = parse_value(val)
+                        else:
+                            v = parse_value(operands[0])
+                        # Always split 16-bit operands into two bytes
+                        operand_bytes.append((v >> 8) & 0xFF)
+                        operand_bytes.append(v & 0xFF)
+                    except ValueError:
+                        self.errors.append(f'Unknown label or value: {operands[0]}')
                 # Output opcode and operands
                 if opcode > 0xFF:
                     bytes_out.append((opcode >> 8) & 0xFF)
@@ -424,6 +444,8 @@ class Assembler:
                 else:
                     bytes_out.append(opcode)
                 bytes_out.extend(operand_bytes)
+#                print(f'bytes_out = {bytes_out}')
+                self.binary.extend(bytes_out)
                 self.print_listing(bytes_out, line)
                 self.current_addr += len(bytes_out)
             else:
@@ -446,8 +468,23 @@ class Assembler:
             self.parse_file(filename, collect_symbols=True, generate_code=False)
         # Pass 2: code generation with resolved symbols
         self.current_addr = 0
+        self.binary = bytearray()
         for filename in self.files:
             self.parse_file(filename, collect_symbols=False, generate_code=True)
+        # Write binary output if not suppressed
+        if not self.gen_flag:
+            if self.obj_name:
+                out_name = self.obj_name
+            else:
+                # Default: input file with .a replaced by .ex9
+                in_name = self.files[0]
+                if in_name.endswith('.a'):
+                    out_name = in_name[:-2] + '.ex9'
+                else:
+                    out_name = in_name + '.ex9'
+            with open(out_name, 'wb') as f:
+                f.write(self.binary)
+            print(f'Object code written to {out_name}')
 
     def report(self):
         print(f'Assembly complete, {len(self.lines)} lines')
