@@ -59,7 +59,7 @@ class Assembler:
         'SUB': 0x80,      # SUB opcode (immediate/direct/extended)
         'JMP': 0x7E,      # JMP opcode (extended)
         'JSR': 0xBD,      # JSR opcode (extended)
-        'LDX': 0xCE,      # LDX opcode (immediate/direct/extended)
+    'LDX': 0x8E,      # LDX opcode (immediate/direct/extended)
         'STX': 0xFF,      # STX opcode (extended)
         'LDY': 0x10CE,    # LDY opcode (immediate/direct/extended)
         'STY': 0x10FF,    # STY opcode (extended)
@@ -155,7 +155,20 @@ class Assembler:
             self.symbol_table.add_symbol(name, value)
         else:
             mnemonic = tokens[0].upper()
+            # Select correct opcode for indexed addressing
             opcode = self.OPCODES.get(mnemonic)
+            if opcode is not None and operands:
+                if ',' in ' '.join(operands):
+                    # Indexed addressing: override opcode for MC6809
+                    indexed_opcodes = {
+                        'LDA': 0xA6, 'STA': 0xA7, 'ADD': 0xAB, 'SUB': 0xA0,
+                        'CMPA': 0xA1, 'ANDA': 0xA4, 'LDB': 0xE6, 'STB': 0xE7,
+                        'ANDB': 0xE4, 'CMPB': 0xE1, 'CMPX': 0xAC,
+                        'LDX': 0xAE, 'STX': 0xAF, 'LDY': 0x10AE, 'STY': 0x10AF,
+                        'LDU': 0xEE, 'STU': 0xEF, 'LEAX': 0x30, 'LEAY': 0x31
+                    }
+                    if mnemonic in indexed_opcodes:
+                        opcode = indexed_opcodes[mnemonic]
             if opcode is not None:
                 operands = tokens[1:] if len(tokens) > 1 else []
                 mode = None
@@ -336,7 +349,19 @@ class Assembler:
             self.symbol_table.add_symbol(name, value)
         else:
             mnemonic = tokens[0].upper()
-            opcode = self.OPCODES.get(mnemonic)
+            # Select correct opcode for indexed addressing
+            indexed_opcodes = {
+                'LDA': 0xA6, 'STA': 0xA7, 'ADD': 0xAB, 'SUB': 0xA0,
+                'CMPA': 0xA1, 'ANDA': 0xA4, 'LDB': 0xE6, 'STB': 0xE7,
+                'ANDB': 0xE4, 'CMPB': 0xE1, 'CMPX': 0xAC,
+                'LDX': 0xAE, 'STX': 0xAF, 'LDY': 0x10AE, 'STY': 0x10AF,
+                'LDU': 0xEE, 'STU': 0xEF, 'LEAX': 0x30, 'LEAY': 0x31
+            }
+            operands = tokens[1:] if len(tokens) > 1 else []
+            if operands and ',' in ' '.join(operands) and mnemonic in indexed_opcodes:
+                opcode = indexed_opcodes[mnemonic]
+            else:
+                opcode = self.OPCODES.get(mnemonic)
             bytes_out = []
             if opcode is not None:
                 operands = tokens[1:] if len(tokens) > 1 else []
@@ -412,16 +437,19 @@ class Assembler:
                                 value_num = parse_value(value)
                             else:
                                 value_num = None
-                            # MC6809 indexed mode: offset byte, register code (X=0x84, Y=0xA4, U=0xC4, S=0xE4)
-                            reg_codes = {'X': 0x84, 'Y': 0xA4, 'U': 0xC4, 'S': 0xE4}
-                            reg_code = reg_codes.get(reg, 0x84)
-                            # Auto-increment: add 0x10 for +, 0x20 for ++
-                            reg_code += auto_inc * 0x10
-                            if value_num is not None:
-                                # Always split 16-bit operands into two bytes
+                            # MC6809 indexed mode: postbyte calculation
+                            reg_codes = {'X': 0x00, 'Y': 0x20, 'U': 0x40, 'S': 0x60}
+                            reg_code = reg_codes.get(reg, 0x00)
+                            # Auto-increment: add 0x08 for +, 0x10 for ++
+                            reg_code += auto_inc * 0x08
+                            if value_num is not None and value != '':
+                                # 16-bit offset: postbyte 0x89 + offset
+                                operand_bytes.append(0x89 | reg_code)
                                 operand_bytes.append((value_num >> 8) & 0xFF)
                                 operand_bytes.append(value_num & 0xFF)
-                            operand_bytes.append(reg_code)
+                            else:
+                                # No offset: just register postbyte
+                                operand_bytes.append(0x84 | reg_code)
                         except Exception:
                             self.errors.append(f'Invalid indexed addressing: {" ".join(operands)}')
                 else:
