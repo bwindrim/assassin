@@ -81,6 +81,18 @@ class Assembler:
         'LDB': 0xD6,      # LDB opcode (direct)
         'ANDB': 0xC4,     # ANDB opcode (immediate/direct/extended)
         'CMPB': 0xC1,     # CMPB opcode (immediate/direct/extended)
+        # Short branches removed, long branches added below
+        'LBRA': 0x16,     # LBRA opcode (long relative)
+        'LBEQ': 0x1027,   # LBEQ opcode (long relative)
+        'LBNE': 0x1026,   # LBNE opcode (long relative)
+    }
+
+    # Map short branch mnemonics to long branch mnemonics
+    BRANCH_MAP = {
+        'BRA': 'LBRA',
+        'BEQ': 'LBEQ',
+        'BNE': 'LBNE',
+        # Add more as needed
     }
 
     def parse_value(self, val):
@@ -93,198 +105,16 @@ class Assembler:
             return int(val, 0)
         raise ValueError(f'Cannot parse value: {val}')
 
-    def parse_line(self, line):
-        line = line.strip()
-        if not line or line.startswith(';'):
-            return
-
-        # Label support: detect and store label before instruction/directive
-        label = None
-        if ':' in line:
-            parts = line.split(':', 1)
-            label = parts[0].strip()
-            line = parts[1].strip() if len(parts) > 1 else ''
-            if label:
-                self.symbol_table.add_symbol(label, self.current_addr)
-                print(f'LABEL: {label} @ {self.current_addr:04X}')
-
-        tokens = line.split()
-        if not tokens:
-            return
-        directive = tokens[0].lower()
-        if directive == 'org':
-            if len(tokens) > 1:
-                try:
-                    self.origin = self.parse_value(tokens[1])
-                    self.current_addr = self.origin
-                    print(f'ORG set to {self.origin:04X}')
-                except ValueError:
-                    self.errors.append(f'Invalid ORG value: {tokens[1]}')
-            else:
-                self.errors.append('ORG directive requires an address')
-        elif directive == 'begin':
-            name = tokens[1] if len(tokens) > 1 else 'BLOCK'
-            self.symbol_table.begin_block(name)
-        elif directive == 'end':
-            try:
-                self.symbol_table.end_block()
-            except Exception as e:
-                self.errors.append(str(e))
-        elif directive in ('db', 'defb'):
-            for val in tokens[1:]:
-                try:
-                    b = self.parse_value(val)
-                    print(f'GENBYTE: {b:02X} @ {self.current_addr:04X}')
-                    self.current_addr += 1
-                except ValueError:
-                    self.errors.append(f'Invalid byte value: {val}')
-        elif directive in ('dw', 'defw'):
-            for val in tokens[1:]:
-                try:
-                    w = self.parse_value(val)
-                    print(f'GENWORD: {w:04X} @ {self.current_addr:04X}')
-                    self.current_addr += 2
-                except ValueError:
-                    self.errors.append(f'Invalid word value: {val}')
-        elif directive in ('ds', 'defs'):
-            if len(tokens) > 1:
-                try:
-                    count = self.parse_value(tokens[1])
-                    print(f'GENSPACE: {count} bytes @ {self.current_addr:04X}')
-                    self.current_addr += count
-                except ValueError:
-                    self.errors.append(f'Invalid space value: {tokens[1]}')
-        elif '=' in line:
-            parts = line.split('=')
-            name = parts[0].strip()
-            value = parts[1].strip()
-            self.symbol_table.add_symbol(name, value)
-        else:
-            mnemonic = tokens[0].upper()
-            # Select correct opcode for indexed addressing
-            opcode = self.OPCODES.get(mnemonic)
-            if opcode is not None and operands:
-                if ',' in ' '.join(operands):
-                    # Indexed addressing: override opcode for MC6809
-                    indexed_opcodes = {
-                        'LDA': 0xA6, 'STA': 0xA7, 'ADD': 0xAB, 'SUB': 0xA0,
-                        'CMPA': 0xA1, 'ANDA': 0xA4, 'LDB': 0xE6, 'STB': 0xE7,
-                        'ANDB': 0xE4, 'CMPB': 0xE1, 'CMPX': 0xAC,
-                        'LDX': 0xAE, 'STX': 0xAF, 'LDY': 0x10AE, 'STY': 0x10AF,
-                        'LDU': 0xEE, 'STU': 0xEF, 'LEAX': 0x30, 'LEAY': 0x31
-                    }
-                    if mnemonic in indexed_opcodes:
-                        opcode = indexed_opcodes[mnemonic]
-            if opcode is not None:
-                operands = tokens[1:] if len(tokens) > 1 else []
-                mode = None
-                operand_bytes = []
-                if not operands:
-                    mode = 'INHERENT'
-                elif operands[0].startswith('#'):
-                    mode = 'IMMEDIATE'
-                    try:
-                        val = operands[0][1:]
-                        # Try to resolve as label first
-                        label_val = self.symbol_table.lookup(val)
-                        if label_val is not None:
-                            operand_bytes.append(self.parse_value(label_val))
-                        else:
-                            operand_bytes.append(self.parse_value(val))
-                    except ValueError:
-                        self.errors.append(f'Invalid immediate value: {operands[0]}')
-                elif operands[0].startswith('<') or operands[0].startswith('>'):
-                    mode = 'DIRECT' if operands[0][0] == '<' else 'EXTENDED'
-                    try:
-                        val = operands[0][1:]
-                        v = self.parse_value(val)
-                        # Always split 16-bit operands into two bytes
-                        operand_bytes.append((v >> 8) & 0xFF)
-                        operand_bytes.append(v & 0xFF)
-                    except ValueError:
-                        self.errors.append(f'Invalid direct/extended value: {operands[0]}')
-                elif ',' in ' '.join(operands):
-                    mode = 'INDEXED'
-                else:
-                    mode = 'ABSOLUTE'
-                    val = self.symbol_table.lookup(operands[0])
-                    if val is not None:
-                        try:
-                            operand_bytes.append(self.parse_value(val))
-                        except ValueError:
-                            self.errors.append(f'Invalid symbol value: {val}')
-                    else:
-                        try:
-                            operand_bytes.append(self.parse_value(operands[0]))
-                        except ValueError:
-                            self.errors.append(f'Unknown label or value: {operands[0]}')
-                print(f'INSTR: {mnemonic} {" ".join(operands)} | MODE: {mode} | OPCODE: {opcode:04X} | OPERANDS: {operand_bytes} @ {self.current_addr:04X}')
-                self.current_addr += 1 + len(operand_bytes)
-            else:
-                self.errors.append(f'Unknown instruction or directive: {mnemonic}')
-
     def parse_file(self, filename, collect_symbols=False, generate_code=False):
         with open(filename) as f:
             for line in f:
                 if collect_symbols:
-                    self.parse_line_collect_symbols(line)
+                    self.parse_line_generate_code(line, generate_code=False)
                 if generate_code:
-                    self.parse_line_generate_code(line)
+                    self.parse_line_generate_code(line, generate_code=True)
                 self.lines.append(line)
 
-    def parse_line_collect_symbols(self, line):
-        line = line.strip()
-        if not line or line.startswith(';'):
-            return
-        # Label support: detect and store label before instruction/directive
-        if ':' in line:
-            parts = line.split(':', 1)
-            label = parts[0].strip()
-            if label:
-                self.symbol_table.add_symbol(label, self.current_addr)
-        tokens = line.split()
-        if not tokens:
-            return
-        directive = tokens[0].lower()
-        if directive == 'org':
-            if len(tokens) > 1:
-                try:
-                    self.origin = int(tokens[1], 0)
-                    self.current_addr = self.origin
-                except ValueError:
-                    pass
-        elif directive in ('db', 'defb'):
-            self.current_addr += len(tokens) - 1
-        elif directive in ('dw', 'defw'):
-            self.current_addr += 2 * (len(tokens) - 1)
-        elif directive in ('ds', 'defs'):
-            if len(tokens) > 1:
-                try:
-                    count = int(tokens[1], 0)
-                    self.current_addr += count
-                except ValueError:
-                    pass
-        elif directive == 'begin':
-            pass
-        elif directive == 'end':
-            pass
-        elif '=' in line:
-            parts = line.split('=')
-            name = parts[0].strip()
-            value = parts[1].strip()
-            # Always try to store as integer if possible
-            try:
-                num_value = self.parse_value(value)
-                self.symbol_table.add_symbol(name, num_value)
-            except Exception:
-                self.symbol_table.add_symbol(name, value)
-        else:
-            self.current_addr += 1 # opcode
-            # crude: add 1 for operand if present
-            if len(tokens) > 1:
-                self.current_addr += 1
-
-    def parse_line_generate_code(self, line):
+    def parse_line_generate_code(self, line, generate_code=True):
         line = line.strip()
         if not line or line.startswith(';'):
             return
@@ -294,7 +124,9 @@ class Assembler:
             label = parts[0].strip()
             line = parts[1].strip() if len(parts) > 1 else ''
             if label:
-                print(f'LABEL: {label} @ {self.current_addr:04X}')
+#                if generate_code:
+#                    print(f'LABEL: {label} @ {self.current_addr:04X}')
+                self.symbol_table.add_symbol(label, self.current_addr)
         tokens = line.split()
         if not tokens:
             return
@@ -304,7 +136,8 @@ class Assembler:
                 try:
                     self.origin = self.parse_value(tokens[1])
                     self.current_addr = self.origin
-                    print(f'ORG set to {self.origin:04X}')
+                    if generate_code:
+                        print(f'ORG set to {self.origin:04X}')
                 except ValueError:
                     self.errors.append(f'Invalid ORG value: {tokens[1]}')
             else:
@@ -323,8 +156,9 @@ class Assembler:
                     self.current_addr += 1
                 except ValueError:
                     self.errors.append(f'Invalid byte value: {val}')
-            self.binary.extend(bytes_out)
-            self.print_listing(bytes_out, line)
+            if generate_code:
+                self.binary.extend(bytes_out)
+                self.print_listing(bytes_out, line)
         elif directive in ('dw', 'defw'):
             bytes_out = []
             for val in tokens[1:]:
@@ -339,15 +173,18 @@ class Assembler:
                     self.current_addr += 2
                 except ValueError:
                     self.errors.append(f'Invalid word value: {val}')
-            self.binary.extend(bytes_out)
-            self.print_listing(bytes_out, line)
+            if generate_code:
+                self.binary.extend(bytes_out)
+                self.print_listing(bytes_out, line)
         elif directive in ('ds', 'defs'):
             bytes_out = [0] * self.parse_value(tokens[1]) if len(tokens) > 1 else []
             self.current_addr += len(bytes_out)
-            self.binary.extend(bytes_out)
-            self.print_listing(bytes_out, line)
+            if generate_code:
+                self.binary.extend(bytes_out)
+                self.print_listing(bytes_out, line)
         elif '=' in line:
-            self.print_listing([], line)
+            if generate_code:
+                self.print_listing([], line)
             parts = line.split('=')
             name = parts[0].strip()
             value = parts[1].strip()
@@ -359,7 +196,9 @@ class Assembler:
                 self.symbol_table.add_symbol(name, value)
         else:
             mnemonic = tokens[0].upper()
-            # Select correct opcode for indexed addressing
+            # Map short branch to long branch
+            if mnemonic in self.BRANCH_MAP:
+                mnemonic = self.BRANCH_MAP[mnemonic]
             indexed_opcodes = {
                 'LDA': 0xA6, 'STA': 0xA7, 'ADD': 0xAB, 'SUB': 0xA0,
                 'CMPA': 0xA1, 'ANDA': 0xA4, 'LDB': 0xE6, 'STB': 0xE7,
@@ -488,13 +327,45 @@ class Assembler:
                     bytes_out.append(opcode & 0xFF)
                 else:
                     bytes_out.append(opcode)
-                bytes_out.extend(operand_bytes)
-#                print(f'bytes_out = {bytes_out}')
-                self.binary.extend(bytes_out)
-                self.print_listing(bytes_out, line)
+                # Special handling for long branches (LBRA, LBEQ, LBNE)
+                if mnemonic in ('LBRA', 'LBEQ', 'LBNE'):
+                    # Long branch: opcode is 2 bytes, operand is 2-byte signed offset (PC-relative)
+                    # Calculate offset: target_addr - (current_addr + instruction_length)
+                    # instruction_length = 4 (2 bytes opcode + 2 bytes offset)
+                    target = operands[0] if operands else None
+                    offset = 0
+                    if target is not None:
+                        # Try to resolve label or value
+                        val = self.symbol_table.lookup(target)
+                        if val is not None:
+#                            print(f'LONG BRANCH to label {target} @ {val}')
+                            target_addr = self.parse_value(val)
+                        else:
+#                            print(f'LONG BRANCH to value {target}')
+                            try:
+                                target_addr = self.parse_value(target)
+                            except Exception:
+                                target_addr = 0
+                        offset = 0x10000 + target_addr - (self.current_addr + 4)
+#                        print(f'LONG BRANCH to {target} @ {target_addr:04X}, OFFSET: {offset}')
+                        offset &= 0xFFFF  # 16-bit signed
+                    # Emit 16-bit signed offset (big endian)
+                    bytes_out.append((offset >> 8) & 0xFF)
+                    bytes_out.append(offset & 0xFF)
+                    if generate_code:
+                        self.binary.extend(bytes_out)
+                        self.print_listing(bytes_out, line)
+                    self.current_addr += len(bytes_out)
+                    return
+                else:
+                    bytes_out.extend(operand_bytes)
+                if generate_code:
+                    self.binary.extend(bytes_out)
+                    self.print_listing(bytes_out, line)
                 self.current_addr += len(bytes_out)
             else:
-                self.print_listing([], line)
+                if generate_code:
+                    self.print_listing([], line)
                 self.errors.append(f'Unknown instruction or directive: {mnemonic}')
 
     def print_listing(self, bytes_out, line):
