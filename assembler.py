@@ -53,38 +53,109 @@ class Assembler:
         self.current_addr = 0
         self.binary = bytearray()
 
-    # MC6809 opcode table (mnemonic: opcode)
+    # MC6809 opcode table: (mnemonic, addressing_mode) -> opcode
     OPCODES = {
-        'LDA': 0x86,      # LDA opcode (immediate/direct/extended)
-        'STA': 0x97,      # STA opcode (direct)
-        'ADD': 0x8B,      # ADD opcode (immediate/direct/extended)
-        'SUB': 0x80,      # SUB opcode (immediate/direct/extended)
-        'JMP': 0x7E,      # JMP opcode (extended)
-        'JSR': 0xBD,      # JSR opcode (extended)
-        'LDX': 0x8E,      # LDX opcode (immediate/direct/extended)
-        'STX': 0xFF,      # STX opcode (extended)
-        'LDY': 0x10CE,    # LDY opcode (immediate/direct/extended)
-        'STY': 0x10FF,    # STY opcode (extended)
-        'CMPA': 0x81,     # CMPA opcode (immediate/direct/extended)
-        'CMPX': 0x8C,     # CMPX opcode (immediate/direct/extended)
-        'BRA': 0x20,      # BRA opcode (relative)
-        'BEQ': 0x27,      # BEQ opcode (relative)
-        'BNE': 0x26,      # BNE opcode (relative)
-        'RTS': 0x39,      # RTS opcode (inherent)
-        'RTI': 0x3B,      # RTI opcode (inherent)
-        'LEAY': 0x31,     # LEAY opcode (indexed addressing)
-        'LEAX': 0x30,     # LEAX opcode (indexed addressing)
-        'LDU': 0xCE,      # LDU opcode (immediate/direct/extended)
-        'EXG': 0x1E,      # EXG opcode (register-to-register)
-        'STB': 0xD7,      # STB opcode (direct)
-        'ANDA': 0x84,     # ANDA opcode (immediate/direct/extended)
-        'LDB': 0xD6,      # LDB opcode (direct)
-        'ANDB': 0xC4,     # ANDB opcode (immediate/direct/extended)
-        'CMPB': 0xC1,     # CMPB opcode (immediate/direct/extended)
-        # Short branches removed, long branches added below
-        'LBRA': 0x16,     # LBRA opcode (long relative)
-        'LBEQ': 0x1027,   # LBEQ opcode (long relative)
-        'LBNE': 0x1026,   # LBNE opcode (long relative)
+        # LDA
+        ('LDA', 'IMMEDIATE'): 0x86,
+        ('LDA', 'DIRECT'):    0x96,
+        ('LDA', 'EXTENDED'):  0xB6,
+        ('LDA', 'INDEXED'):   0xA6,
+        # STA
+        ('STA', 'DIRECT'):    0x97,
+        ('STA', 'EXTENDED'):  0xB7,
+        ('STA', 'INDEXED'):   0xA7,
+        # ADD
+        ('ADD', 'IMMEDIATE'): 0x8B,
+        ('ADD', 'DIRECT'):    0x9B,
+        ('ADD', 'EXTENDED'):  0xBB,
+        ('ADD', 'INDEXED'):   0xAB,
+        # SUB
+        ('SUB', 'IMMEDIATE'): 0x80,
+        ('SUB', 'DIRECT'):    0x90,
+        ('SUB', 'EXTENDED'):  0xB0,
+        ('SUB', 'INDEXED'):   0xA0,
+        # JMP
+        ('JMP', 'EXTENDED'):  0x7E,
+        ('JMP', 'INDEXED'):   0x6E,
+        # JSR
+        ('JSR', 'EXTENDED'):  0xBD,
+        ('JSR', 'INDEXED'):   0xAD,
+        # LDX
+        ('LDX', 'IMMEDIATE'): 0x8E,
+        ('LDX', 'DIRECT'):    0x9E,
+        ('LDX', 'EXTENDED'):  0xBE,
+        ('LDX', 'INDEXED'):   0xAE,
+        # STX
+        ('STX', 'DIRECT'):    0x9F,
+        ('STX', 'EXTENDED'):  0xBF,
+        ('STX', 'INDEXED'):   0xAF,
+        # LDY
+        ('LDY', 'IMMEDIATE'): 0x10CE,
+        ('LDY', 'DIRECT'):    0x109E,
+        ('LDY', 'EXTENDED'):  0x10BE,
+        ('LDY', 'INDEXED'):   0x10AE,
+        # STY
+        ('STY', 'DIRECT'):    0x109F,
+        ('STY', 'EXTENDED'):  0x10BF,
+        ('STY', 'INDEXED'):   0x10AF,
+        # CMPA
+        ('CMPA', 'IMMEDIATE'): 0x81,
+        ('CMPA', 'DIRECT'):    0x91,
+        ('CMPA', 'EXTENDED'):  0xB1,
+        ('CMPA', 'INDEXED'):   0xA1,
+        # CMPX
+        ('CMPX', 'IMMEDIATE'): 0x8C,
+        ('CMPX', 'DIRECT'):    0x9C,
+        ('CMPX', 'EXTENDED'):  0xBC,
+        ('CMPX', 'INDEXED'):   0xAC,
+        # BRA/BNE/BEQ (short, not used by default)
+        ('BRA', 'RELATIVE'):   0x20,
+        ('BEQ', 'RELATIVE'):   0x27,
+        ('BNE', 'RELATIVE'):   0x26,
+        # LBRA/LBEQ/LBNE (long, default)
+        ('LBRA', 'RELATIVE'):  0x16,
+        ('LBEQ', 'RELATIVE'):  0x1027,
+        ('LBNE', 'RELATIVE'):  0x1026,
+        # RTS/RTI
+        ('RTS', 'INHERENT'):   0x39,
+        ('RTI', 'INHERENT'):   0x3B,
+        # LEAY/LEAX
+        ('LEAY', 'INDEXED'):   0x31,
+        ('LEAX', 'INDEXED'):   0x30,
+        # LDU
+        ('LDU', 'IMMEDIATE'):  0xCE,
+        ('LDU', 'DIRECT'):     0xDE,
+        ('LDU', 'EXTENDED'):   0xFE,
+        ('LDU', 'INDEXED'):    0xEE,
+        # STU
+        ('STU', 'DIRECT'):     0xDF,
+        ('STU', 'EXTENDED'):   0xFF,
+        ('STU', 'INDEXED'):    0xEF,
+        # EXG
+        ('EXG', 'EXG'):        0x1E,
+        # STB
+        ('STB', 'DIRECT'):     0xD7,
+        ('STB', 'EXTENDED'):   0xF7,
+        ('STB', 'INDEXED'):    0xE7,
+        # ANDA
+        ('ANDA', 'IMMEDIATE'): 0x84,
+        ('ANDA', 'DIRECT'):    0x94,
+        ('ANDA', 'EXTENDED'):  0xB4,
+        ('ANDA', 'INDEXED'):   0xA4,
+        # LDB
+        ('LDB', 'DIRECT'):     0xD6,
+        ('LDB', 'EXTENDED'):   0xF6,
+        ('LDB', 'INDEXED'):    0xE6,
+        # ANDB
+        ('ANDB', 'IMMEDIATE'): 0xC4,
+        ('ANDB', 'DIRECT'):    0xD4,
+        ('ANDB', 'EXTENDED'):  0xF4,
+        ('ANDB', 'INDEXED'):   0xE4,
+        # CMPB
+        ('CMPB', 'IMMEDIATE'): 0xC1,
+        ('CMPB', 'DIRECT'):    0xD1,
+        ('CMPB', 'EXTENDED'):  0xF1,
+        ('CMPB', 'INDEXED'):   0xE1,
     }
 
     # Map short branch mnemonics to long branch mnemonics
@@ -199,22 +270,33 @@ class Assembler:
             # Map short branch to long branch
             if mnemonic in self.BRANCH_MAP:
                 mnemonic = self.BRANCH_MAP[mnemonic]
-            indexed_opcodes = {
-                'LDA': 0xA6, 'STA': 0xA7, 'ADD': 0xAB, 'SUB': 0xA0,
-                'CMPA': 0xA1, 'ANDA': 0xA4, 'LDB': 0xE6, 'STB': 0xE7,
-                'ANDB': 0xE4, 'CMPB': 0xE1, 'CMPX': 0xAC,
-                'LDX': 0xAE, 'STX': 0xAF, 'LDY': 0x10AE, 'STY': 0x10AF,
-                'LDU': 0xEE, 'STU': 0xEF, 'LEAX': 0x30, 'LEAY': 0x31
-            }
             operands = tokens[1:] if len(tokens) > 1 else []
-            if operands and ',' in ' '.join(operands) and mnemonic in indexed_opcodes:
-                opcode = indexed_opcodes[mnemonic]
+            # Determine addressing mode
+            mode = None
+            if not operands:
+                mode = 'INHERENT'
+            elif mnemonic in ('LBRA', 'LBEQ', 'LBNE'):
+                mode = 'RELATIVE'
+            elif operands[0].startswith('#'):
+                mode = 'IMMEDIATE'
+            elif operands[0].startswith('<'):
+                mode = 'DIRECT'
+            elif operands[0].startswith('>'):
+                mode = 'EXTENDED'
+            elif ',' in ' '.join(operands):
+                if mnemonic == 'EXG':
+                    mode = 'EXG'
+                else:
+                    mode = 'INDEXED'
             else:
-                opcode = self.OPCODES.get(mnemonic)
+                # Default to EXTENDED for absolute addresses
+                mode = 'EXTENDED'
+
+            # Use (mnemonic, mode) as key for OPCODES
+            opcode = self.OPCODES.get((mnemonic, mode))
             bytes_out = []
             if opcode is not None:
                 operands = tokens[1:] if len(tokens) > 1 else []
-                mode = None
                 operand_bytes = []
                 if not operands:
                     mode = 'INHERENT'
