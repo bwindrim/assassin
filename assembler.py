@@ -193,8 +193,24 @@ class Assembler:
     # Map short branch mnemonics to long branch mnemonics
     BRANCH_MAP = {
         'BRA': 'LBRA',
+        'BRN': 'LBRN',
         'BEQ': 'LBEQ',
         'BNE': 'LBNE',
+        'BVC': 'LBVC',
+        'BVS': 'LBVS',
+        'BPL': 'LBPL',
+        'BMI': 'LBMI',
+        'BGE': 'LBGE',
+        'BLT': 'LBLT',
+        'BGT': 'LBGT',
+        'BLE': 'LBLE',
+        'BHS': 'LBHS',
+        'BLO': 'LBLO',
+        'BCS': 'LBCS',
+        'BCC': 'LBCC',
+        'BHI': 'LBHI',
+        'BLS': 'LBLS',
+        'BSR': 'LBSR',
         # Add more as needed
     }
 
