@@ -108,10 +108,10 @@ class Assembler:
         ('CMPX', 'DIRECT'):    0x9C,
         ('CMPX', 'EXTENDED'):  0xBC,
         ('CMPX', 'INDEXED'):   0xAC,
-        # BRA/BNE/BEQ (short, not used by default)
-        ('BRA', 'RELATIVE'):   0x20,
-        ('BEQ', 'RELATIVE'):   0x27,
-        ('BNE', 'RELATIVE'):   0x26,
+        # SBRA/SBNE/SBEQ (short, not used by default)
+        ('SBRA', 'RELATIVE'):   0x20,
+        ('SBEQ', 'RELATIVE'):   0x27,
+        ('SBNE', 'RELATIVE'):   0x26,
         # LBRA/LBEQ/LBNE (long, default)
         ('LBRA', 'RELATIVE'):  0x16,
         ('LBEQ', 'RELATIVE'):  0x1027,
@@ -357,10 +357,10 @@ class Assembler:
                             auto_inc = 0
                             if reg.endswith('++'):
                                 reg = reg[:-2]
-                                auto_inc = 2
+                                auto_inc = 1
                             elif reg.endswith('+'):
                                 reg = reg[:-1]
-                                auto_inc = 1
+                                auto_inc = 0
                             val = self.symbol_table.lookup(value)
                             if val is not None and value:
                                 value_num = self.parse_value(val)
@@ -371,23 +371,22 @@ class Assembler:
                             # MC6809 indexed mode: postbyte calculation
                             reg_codes = {'X': 0x00, 'Y': 0x20, 'U': 0x40, 'S': 0x60}
                             reg_code = reg_codes.get(reg, 0x00)
-                            # Auto-increment: add 0x08 for +, 0x10 for ++
-                            reg_code += auto_inc * 0x08
+                            # Auto-increment: set LSB for ++, clear for +
+                            reg_code |= auto_inc
                             if value_num is not None and value != '':
                                 # Compact 5-bit signed offset (-16..15)
                                 if -16 <= value_num <= 15:
                                     # MC6809: postbyte = offset (5 bits, signed) | reg_code
                                     offset = value_num & 0x1F
-                                    postbyte = offset | reg_code
-                                    operand_bytes.append(postbyte)
+                                    operand_bytes.append(offset | reg_code)
                                 else:
-                                    # 16-bit offset: postbyte 0x89 + offset
+                                    # 16-bit offset: postbyte = 0x89 + offset
                                     operand_bytes.append(0x89 | reg_code)
                                     operand_bytes.append((value_num >> 8) & 0xFF)
                                     operand_bytes.append(value_num & 0xFF)
                             else:
-                                # No offset: just register postbyte
-                                operand_bytes.append(0x84 | reg_code)
+                                # No offset: just the register postbyte
+                                operand_bytes.append(0x80 | reg_code)
                         except Exception:
                             self.errors.append(f'Invalid indexed addressing: {" ".join(operands)}')
                 else:
@@ -411,9 +410,9 @@ class Assembler:
                     bytes_out.append(opcode)
                 # Special handling for long branches (LBRA, LBEQ, LBNE)
                 if mnemonic in ('LBRA', 'LBEQ', 'LBNE'):
-                    # Long branch: opcode is 2 bytes, operand is 2-byte signed offset (PC-relative)
+                    # Long branch: opcode is 1 or 2 bytes, operand is 2-byte signed offset (PC-relative)
                     # Calculate offset: target_addr - (current_addr + instruction_length)
-                    # instruction_length = 4 (2 bytes opcode + 2 bytes offset)
+                    # instruction_length = 3 or 4 (1 or 2 bytes opcode + 2 bytes offset)
                     target = operands[0] if operands else None
                     offset = 0
                     if target is not None:
@@ -428,12 +427,40 @@ class Assembler:
                                 target_addr = self.parse_value(target)
                             except Exception:
                                 target_addr = 0
-                        offset = 0x10000 + target_addr - (self.current_addr + 4)
+                        offset = 0x10000 + target_addr - (self.current_addr + 2 + len(bytes_out))
 #                        print(f'LONG BRANCH to {target} @ {target_addr:04X}, OFFSET: {offset}')
                         offset &= 0xFFFF  # 16-bit signed
                     # Emit 16-bit signed offset (big endian)
                     bytes_out.append((offset >> 8) & 0xFF)
                     bytes_out.append(offset & 0xFF)
+                    if generate_code:
+                        self.binary.extend(bytes_out)
+                        self.print_listing(bytes_out, line)
+                    self.current_addr += len(bytes_out)
+                    return
+                elif mnemonic in ('SBRA', 'SBEQ', 'SBNE'):
+                    # Short branch: opcode is 1 byte, operand is 1-byte signed offset (PC-relative)
+                    # Calculate offset: target_addr - (current_addr + instruction_length)
+                    # instruction_length = 2 (1 byte opcode + 1 byte offset)
+                    target = operands[0] if operands else None
+                    offset = 0
+                    if target is not None:
+                        # Try to resolve label or value
+                        val = self.symbol_table.lookup(target)
+                        if val is not None:
+#                            print(f'SHORT BRANCH to label {target} @ {val}')
+                            target_addr = self.parse_value(val)
+                        else:
+#                            print(f'SHORT BRANCH to value {target}')
+                            try:
+                                target_addr = self.parse_value(target)
+                            except Exception:
+                                target_addr = 0
+                        offset = target_addr - (self.current_addr + 1 + len(bytes_out))
+#                        print(f'SHORT BRANCH to {target} @ {target_addr:04X}, OFFSET: {offset}')
+                    # Emit 8-bit signed offset
+                    assert -128 <= offset <= 127, f'Short branch offset out of range: {offset}'
+                    bytes_out.append((offset + 0x100) & 0xFF)
                     if generate_code:
                         self.binary.extend(bytes_out)
                         self.print_listing(bytes_out, line)
