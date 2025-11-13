@@ -649,6 +649,7 @@ void	parse_stream (
   char textbuffer [TEXT_BUFF_SIZE];
   int local_count = 0;
 
+  if (verbose)
 	printf("parse_stream(%s)\n", fname);
 
    while (fgets (textbuffer, TEXT_BUFF_SIZE, fp))
@@ -664,7 +665,8 @@ void	parse_stream (
 
 void	parse_file (const char *filename)
 {
-	printf("parse_file(%s)\n", filename);
+	if (verbose)
+		printf("parse_file(%s)\n", filename);
 
   	if (0 == strlen (filename))
     {

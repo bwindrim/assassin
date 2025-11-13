@@ -18,7 +18,8 @@ extern int
 	gen_flag,
 	list_flag,
 	exp_flag,
-	debug;
+	debug,
+	verbose;
 
 extern char
 	*obj_name;

@@ -23,16 +23,17 @@
 #include "gen.h"
 #include "recog.h"
 
-#define TABLE_SIZE 5
 struct opt_rec table [] =
 {
     { "-l", noarg_opt, (char_ptr) &list_flag },
     { "-x", noarg_opt, (char_ptr) &exp_flag  },
     { "-n", noarg_opt, (char_ptr) &gen_flag  },
     { "-d", noarg_opt, (char_ptr) &debug     },
+    { "-v", noarg_opt, (char_ptr) &verbose   },
     { "-o", starg_opt, (char_ptr) &obj_name  }
 };
 
+#define TABLE_SIZE (sizeof(table)/sizeof(table[0]))
 
 int	main (int argc, char *argv[])
 {
@@ -76,10 +77,13 @@ int	main (int argc, char *argv[])
 	  err_count = 0;
 	  lcount    = 0;
 
-	  printf("Pass %d\n", pass);
+	  if (verbose)
+	  {
+		  printf("Pass %d\n", pass);
 	  
-	  if (1 == pass)
-	      printf ("%s%s", TITLE_STR, list_flag ? "\n\n" : "\n");
+		if (1 == pass)
+			printf ("%s%s", TITLE_STR, list_flag ? "\n\n" : "\n");
+	  }
 
 	  if (2 == pass)
 	    {

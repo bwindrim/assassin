@@ -23,7 +23,8 @@ bool	forward_sym,
 int	gen_flag = FALSE,
 	list_flag = FALSE,
 	exp_flag = FALSE,
-	debug = FALSE;
+	debug = FALSE,
+	verbose = FALSE;
 
 char	*obj_name = NULL;
 
