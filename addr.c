@@ -182,7 +182,13 @@ int addmode (void)
                    {
                      if (reg == 'R')
                        {
-                         val -= genaddr + 2;
+                         /* Since genaddr doesn't advance until the entire instruction is dumped (or flushed)
+                            we have to account for the length of the instruction so far when calculating the
+                            PC-relative offset.
+                            */
+                         const int length = genptr - genbuffer;
+//                         printf("PCR, val = 0x%04x, genaddr = 0x%04x, length = %d\n", val, genaddr, length);
+                         val -= genaddr + length + 2; /* try for a 2-byte addr suffix */
                          if (val > 127 || val < -128)
                            genbyteword (0x8D | indirect, val - 1);
                          else
