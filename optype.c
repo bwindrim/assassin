@@ -401,8 +401,9 @@ void	typebr (unsigned int nextw, unsigned int lso)
   forward_sym = FALSE;
 
   val = branchaddr () - (genaddr + 2);
+#if 0
   lso = LONG; /* force long-form branches (ToDo: fix this) */
-
+#endif
   if (OPT == lso)
   {
     if (val <= 127 && val >= -128 && !forward_sym && (val <= -2))
@@ -412,7 +413,14 @@ void	typebr (unsigned int nextw, unsigned int lso)
   }
 
   if (SHORT == lso)
+  {
+    /* On pass 1, forward symbols evaluate to 0, which can yield an
+       out-of-range displacement and suppress length accounting. Reserve
+       the 2-byte short form with a neutral offset instead. */
+    if (forward_sym && pass == 1)
+      val = 0;
     genbytebyte (code & 0xFF, val);
+  }
   else if ((code & 0xFF00) == 0x1000)
     genwordword (code, val - 2);
   else
